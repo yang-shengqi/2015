@@ -1,0 +1,42 @@
+/* ============================================================
+ * cn-qw.css —— A股量化工作台 · 页面层
+ * 契约：仅排版、尺寸 / 密度变量；外观完全继承系统层。
+ * ============================================================ */
+
+/* 网格布局 */
+.region-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
+.split-grid  { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
+
+/* 变量覆盖法调整卡片内边距 */
+.region-card { --card-pad: 22px 24px; text-align: center; }
+.split-card  { --card-pad: 20px 22px 18px; }
+
+/* 卡片内文字排版 */
+.region-name { font-size: 17px; font-weight: 700; color: var(--nm-text); }
+.region-en   { font-size: 12px; color: var(--nm-text-3); margin: 3px 0 6px; }
+.region-role { font-size: 12.5px; color: var(--nm-accent); }
+
+.split-title { font-size: 16px; font-weight: 700; text-align: center; color: var(--nm-text); }
+.split-sub   { font-size: 12px; text-align: center; color: var(--nm-text-3); margin: 4px 0 14px; }
+
+.split-card .asset-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; font-size: 13.5px; color: var(--nm-text-2); border-bottom: 1px solid var(--nm-line); }
+.split-card .asset-row:last-child { border-bottom: 0; }
+.split-card .asset-row .pct { font-weight: 700; color: var(--nm-accent); font-variant-numeric: tabular-nums; }
+
+/* 代码输入框尺寸 */
+.cn-qw-ta { width: 100%; height: 240px; resize: vertical; }
+.cn-qw-actions { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 12px; }
+.cn-qw-actions .btn { flex-shrink: 0; white-space: nowrap; }
+.cn-qw-selector-table { width: 100%; }
+.cn-qw-tip { margin-bottom: 16px; }
+
+/* ============================================================
+ * 完全照抄 HK 页面：手风琴排版
+ * ============================================================ */
+.cn-qw-acc-group { --card-pad: 22px 24px; }
+.exec-acc__title { flex: 1; min-width: 0; font-size: 14px; line-height: 1.5; text-align: left; }
+.exec-acc__num { flex-shrink: 0; padding: 4px 12px; border-radius: var(--nm-r-full); background: var(--nm-bg); box-shadow: var(--nm-in-sm); font-size: 12.5px; font-weight: 700; color: var(--nm-accent); }
+
+@media (max-width: 860px) {
+  .region-grid, .split-grid { grid-template-columns: 1fr; }
+}

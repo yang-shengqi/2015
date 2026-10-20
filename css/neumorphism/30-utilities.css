@@ -1,0 +1,45 @@
+/* ============================================================
+ * 30-utilities.css —— 工具类
+ * ============================================================ */
+
+.text-center { text-align: center; }
+.text-muted  { color: var(--nm-text-3); }
+.fw-normal   { font-weight: 400; }
+
+/* 通用状态文本 */
+.status {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--nm-text-2);
+  line-height: 1.75;
+}
+.status .err { color: var(--nm-fail); }
+.status .ok  { color: var(--nm-ok); }
+
+/* 彻底隐藏 */
+.is-hidden { display: none !important; }
+
+/* 需要过渡的隐藏态（替代自造的 .hide） */
+.is-fading {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* ============================================================
+ * 间距与显示工具类
+ * ============================================================ */
+.mt-16 { margin-top: 16px !important; }
+.mt-24 { margin-top: 24px !important; }
+.mb-24 { margin-bottom: 24px !important; }
+
+.content-area {
+  display: none;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.mod-failed {
+  outline: 2px solid var(--nm-fail);
+  outline-offset: 4px;
+}
