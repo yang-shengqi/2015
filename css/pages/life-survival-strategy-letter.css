@@ -1,0 +1,76 @@
+/* ============================================================
+ * letter.css —— 家书 · 页面层
+ * 语言切换逻辑 + 业务特有结构
+ * ============================================================ */
+
+/* ---------- 中英显隐 ---------- */
+html[data-lang="zh"] .en { display: none !important; }
+html[data-lang="en"] .zh { display: none !important; }
+
+/* 语言按钮内部两个词始终双显 */
+html[data-lang="zh"] .lang-btn .zh,
+html[data-lang="zh"] .lang-btn .en,
+html[data-lang="en"] .lang-btn .zh,
+html[data-lang="en"] .lang-btn .en {
+  display: inline-block !important;
+}
+
+/* hero lede 英文段换行 */
+.hero__lede .en { display: block !important; margin-top: 4px; }
+
+/* ---------- 07 货币篮子 ---------- */
+.currency-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+.currency-code { font-family: var(--nm-mono); font-size: 18px; font-weight: 700; color: var(--nm-text); letter-spacing: .04em; }
+.currency-pct { font-size: 13px; font-weight: 600; color: var(--nm-accent); margin: 4px 0 10px; font-variant-numeric: tabular-nums; }
+
+/* 进度条轨道：加宽并强制内凹 */
+.currency-bar { 
+  height: 8px; 
+  border-radius: var(--nm-r-full); 
+  background: var(--nm-bg); 
+  box-shadow: var(--nm-in-sm) !important; 
+  overflow: hidden; 
+}
+
+.currency-fill { height: 100%; border-radius: var(--nm-r-full); background: var(--nm-accent); transition: width var(--nm-t); }
+.currency-name { font-size: 12px; color: var(--nm-text-3); margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.currency-item.is-pegged .currency-code,
+.currency-item.is-pegged .currency-pct { color: var(--nm-text-3); }
+
+/* ---------- 09/12 步骤标签 ---------- */
+.step-tags { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.step { 
+  display: inline-flex; 
+  align-items: center; 
+  gap: 8px; 
+  padding: 0 16px 0 6px; 
+  font-size: 13px; 
+  color: var(--nm-text-2); 
+  height: 38px; 
+  box-sizing: border-box; 
+  line-height: 38px; 
+}
+.step-num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--nm-accent); color: var(--nm-on-accent); font-size: 13px; font-weight: 700; flex-shrink: 0; line-height: 1; }
+.step .zh, .step .en { line-height: inherit; }
+
+/* ---------- 高亮框：强制内凹 ---------- */
+.hbox, .hbox.gold, .hbox.red { 
+  padding: 16px 20px; 
+  font-size: 13.5px; 
+  line-height: 1.8; 
+  color: var(--nm-text-2); 
+  margin-top: 20px; 
+}
+.hbox p + p { margin-top: 8px; }
+.hbox.gold strong { color: var(--nm-warn); }
+.hbox.red strong { color: var(--nm-fail); }
+
+/* ---------- 16 复利计算器布局 ---------- */
+.calculator-grid { --grid-gap: 24px; margin-top: 24px; }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 1180px) { .currency-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 1024px) { .currency-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 860px) { .currency-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .calculator-grid { grid-template-columns: 1fr; } }
+@media (max-width: 480px) { .currency-grid { grid-template-columns: 1fr; } }
+

@@ -1,0 +1,119 @@
+/* ============================================================
+ * 04-side-nav.css —— 侧边悬浮导航（新拟物 · 无位移版）
+ * 依赖：仅需为 .sfn-btn 提供 data-tip 属性
+ * 本文件不得写 :root，严禁业务特例（如 variant 颜色）
+ * ============================================================ */
+
+.side-float-nav {
+  --sfn-size:     48px;
+  --sfn-gap:      var(--nm-sp-3);
+  --sfn-radius:   var(--nm-r-md);
+  --sfn-icon:     22px;
+  --sfn-tip-bg:   var(--nm-text);
+  --sfn-tip-fg:   var(--nm-on-accent);
+
+  position: fixed;
+  top: 50%;
+  right: max(24px, calc((100vw - var(--nm-max-w)) / 2 - 100px));
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sfn-gap);
+  z-index: 1000;
+}
+
+.sfn-item { display: flex; }
+
+/* ---------- 按钮 ---------- */
+.sfn-btn {
+  position: relative;
+  width: var(--sfn-size);
+  height: var(--sfn-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--sfn-radius);
+  background: var(--nm-bg);
+  color: var(--nm-text-2);
+  cursor: pointer;
+  text-decoration: none;
+  outline: none;
+  box-shadow: var(--nm-out-xs);
+  transition: box-shadow var(--nm-t), color var(--nm-t);
+}
+
+.sfn-btn svg {
+  width: var(--sfn-icon);
+  height: var(--sfn-icon);
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sfn-label { display: none; }
+
+/* ---------- 鼠标交互（无位移） ---------- */
+.sfn-btn:hover {
+  box-shadow: var(--nm-out-sm);
+  color: var(--nm-accent);
+}
+
+/* 统一激活态：只认 .active */
+.sfn-btn:active,
+.sfn-btn.active {
+  box-shadow: var(--nm-in-sm);
+  color: var(--nm-accent);
+}
+
+/* 键盘可达性 */
+.sfn-btn:focus-visible {
+  box-shadow: var(--nm-out-sm), 0 0 0 2px var(--nm-accent);
+}
+
+/* ---------- 气泡提示（从左侧弹出） ---------- */
+.sfn-btn::after {
+  content: attr(data-tip);
+  position: absolute;
+  right: calc(100% + 14px);
+  left: auto;
+  top: 50%;
+  transform: translateY(-50%) scale(0.92);
+  transform-origin: right center;
+
+  background: var(--sfn-tip-bg);
+  color: var(--sfn-tip-fg);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 8px 14px;
+  border-radius: var(--nm-r-full);
+  white-space: nowrap;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+  z-index: 1100;
+}
+
+.sfn-btn:hover::after,
+.sfn-btn:focus-visible::after {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 860px) {
+  .side-float-nav { display: none; }
+}
+
+/* ---------- 减少动效 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .sfn-btn,
+  .sfn-btn::after { transition: none !important; }
+}

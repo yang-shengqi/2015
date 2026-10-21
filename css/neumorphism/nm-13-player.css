@@ -1,0 +1,132 @@
+/* ============================================================
+ * 13-player.css —— 音乐播放器（全站规范化版）
+ * ============================================================ */
+
+/* 容器：固定在左侧，与右侧侧边栏绝对对称 */
+music-player {
+  position: fixed;
+  top: 50%;
+  left: max(24px, calc((100vw - var(--nm-max-w)) / 2 - 100px));
+  transform: translateY(-50%);
+  z-index: 1000; /* 降低层级，确保在弹窗遮罩之下 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: max-content;
+  user-select: none;
+}
+
+/* 单个裸按钮 */
+.nm-bare-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--nm-bg);
+  box-shadow: var(--nm-out-sm);
+  color: var(--nm-text-3); /* ★ 默认灰色 */
+  cursor: pointer;
+  transition: all var(--nm-t);
+  flex-shrink: 0;
+}
+
+.nm-bare-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* 鼠标悬停：变 VI 紫，阴影变浅 */
+.nm-bare-btn:hover {
+  color: var(--nm-accent); /* ★ 悬停变紫 */
+  box-shadow: var(--nm-out-hover);
+}
+
+/* 点击按下：凹陷，保持紫 */
+.nm-bare-btn:active {
+  box-shadow: var(--nm-in-active);
+  color: var(--nm-accent);
+}
+
+/* 气泡提示 */
+.nm-bare-btn::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: calc(100% + 14px);
+  top: 50%;
+  transform: translateY(-50%) scale(0.92);
+  transform-origin: left center;
+  background: var(--nm-text);
+  color: var(--nm-bg);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
+  padding: 8px 14px;
+  border-radius: var(--nm-r-full);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+  z-index: 1100;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nm-bare-btn:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+/* 播放键：放大一圈 */
+.nm-bare-btn.-play {
+  width: 44px;
+  height: 44px;
+  color: var(--nm-text-3); /* 默认也是灰色 */
+  box-shadow: var(--nm-out);
+}
+
+.nm-bare-btn.-play svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nm-bare-btn.-play:hover {
+  box-shadow: var(--nm-out-hover);
+  color: var(--nm-accent); /* 悬停变紫 */
+}
+
+.nm-bare-btn.-play:active {
+  box-shadow: var(--nm-in);
+  color: var(--nm-accent);
+}
+
+/* 响应式：屏幕小于 860px 时，变成底部水平居中的悬浮条 */
+@media screen and (max-width: 860px) {
+  music-player {
+    left: 50%;
+    top: auto;
+    bottom: 30px;
+    transform: translateX(-50%);
+    flex-direction: row;
+    gap: 24px;
+  }
+  .nm-bare-btn::after {
+    left: 50%;
+    top: auto;
+    bottom: calc(100% + 14px);
+    transform: translateX(-50%) scale(0.92);
+    transform-origin: bottom center;
+  }
+  .nm-bare-btn:hover::after {
+    transform: translateX(-50%) scale(1);
+  }
+}
