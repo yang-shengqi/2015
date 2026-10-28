@@ -1,0 +1,45 @@
+/* ============================================================
+ * the-global-wealth-bible.css —— 页面层
+ * 仅提供网格排版，绝不写外观（颜色/阴影由系统层 .card 提供）
+ * ============================================================ */
+
+/* 自适应网格排版（专治卡片高度不一、内容溢出） */
+.bible-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  align-items: stretch; /* 核心：强行拉伸至等高 */
+  margin-top: 24px;
+}
+
+/* 网格内的卡片需要 flex 支撑底部推平 */
+.bible-grid .card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  margin-bottom: 0; /* 抵消系统层 .card 默认的 margin-bottom */
+}
+
+/* 利用 margin-top: auto 把底部的逻辑框推到最底端 */
+.bible-grid .hbox {
+  margin-top: auto;
+  padding: 16px;
+}
+
+/* 适配手机端单列 */
+@media (max-width: 640px) {
+  .bible-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+ * 语言切换按钮高亮
+ * ============================================================ */
+.lang-btn > span.active {
+  color: var(--nm-accent) !important;
+  font-weight: 600 !important;
+  background: var(--nm-bg) !important;
+  box-shadow: var(--nm-out-xs) !important;
+}
+
