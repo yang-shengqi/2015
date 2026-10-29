@@ -377,7 +377,7 @@ button.click-text:hover { color: var(--nm-accent); }
 @media (max-width: 640px) {
   .hero { --hero-pad-y: 28px; --hero-pad-x: 20px; }
   .asset-grid-4col { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.asset-mini-card { --card-sm-pad: 14px 8px; }
+  .asset-mini-card { --card-sm-pad: 14px 8px; }
   .asset-mini-card .number { font-size: 14px; }
   .core-card { --card-sm-pad: 18px 14px; }
   .core-card .card-main-value { font-size: 22px; }
@@ -386,8 +386,17 @@ button.click-text:hover { color: var(--nm-accent); }
   .dev-head > span:nth-child(4), .dev-head > span:nth-child(5), .dev-head > span:nth-child(6) { display: none; }
   .dev-head, .dev-row { grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr) 70px 24px; }
   .dev-target, .dev-actual, .dev-dev { display: none; }
+  
+  /* 新增倒计时压缩适配 */
+  .nm-cd-shell{padding:16px 12px}
+  .nm-cd__grid{gap:6px}
+  .nm-cd__num{font-size:clamp(24px,8vw,42px);letter-spacing:-.05em;line-height:1}
+  .nm-cd__lbl{font-size:11px;margin-top:4px}
+  .nm-cd-shell__head{flex-direction:column;align-items:flex-start;gap:8px}
+  .nm-cd-shell__badge{font-size:11px}
+  .nm-cd-shell__date{font-size:20px}
+  .nm-cd-shell__sub{font-size:12px}
 }
-
 /* 杀掉 CSS 里默认的过渡，防止打架 */
 .ao-fill, .bar-segment {
   transition: none !important;
