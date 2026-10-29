@@ -1,0 +1,172 @@
+/* ============================================================
+ * nm-14-clock.css —— 系统层：悬浮挂钟挂件
+ * ============================================================ */
+
+/* ================= 1. 挂钟基础结构 ================= */
+.nm-wall-clock {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: var(--nm-bg);
+  border-radius: 50%;
+  box-shadow: var(--nm-out-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4%; 
+  box-sizing: border-box;
+}
+
+.nm-clock-face {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--nm-bg);
+  box-shadow: var(--nm-in);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  container-type: inline-size;
+}
+
+/* ================= 2. 刻度、数字、指针 ================= */
+.nm-clock-tick {
+  position: absolute;
+  width: 1.2cqw;
+  height: 1.2cqw;
+  background: var(--nm-text-3);
+  border-radius: 50%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.6;
+}
+.nm-clock-tick.hour {
+  width: 2cqw;
+  height: 2cqw;
+  background: var(--nm-text-2);
+  opacity: 1;
+}
+
+.nm-clock-number {
+  position: absolute;
+  font-size: 5.5cqw;
+  font-weight: 600;
+  color: var(--nm-text);
+  font-family: var(--nm-font);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%); 
+}
+
+.nm-clock-hand {
+  position: absolute;
+  bottom: 50%;
+  left: 50%;
+  transform-origin: bottom center;
+  border-radius: var(--nm-r-full);
+  z-index: 5;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.15); 
+}
+
+.nm-clock-hand.hour {
+  width: 2.5cqw;
+  height: 26%;
+  background: var(--nm-text);
+  margin-left: -1.25cqw; 
+}
+.nm-clock-hand.minute {
+  width: 2cqw;
+  height: 36%;
+  background: var(--nm-text);
+  margin-left: -1cqw; 
+  box-shadow: none; 
+}
+.nm-clock-hand.second {
+  width: 1cqw;
+  height: 42%;
+  background: var(--nm-accent);
+  margin-left: -0.5cqw; 
+  z-index: 6;
+  box-shadow: none;
+}
+.nm-clock-hand.second::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  height: 16%;
+  background: var(--nm-accent);
+  border-radius: var(--nm-r-full);
+}
+
+.nm-clock-center {
+  position: absolute;
+  width: 4cqw;
+  height: 4cqw;
+  border-radius: 50%;
+  background: var(--nm-bg);
+  z-index: 10;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.2), 1px 1px 3px rgba(0, 0, 0, 0.1);
+}
+.nm-clock-center::after {
+  content: '';
+  position: absolute;
+  inset: 25%;
+  border-radius: 50%;
+  background: var(--nm-accent);
+}
+
+.nm-clock-logo {
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  transform: translateX(-50%);
+  font-family: var(--nm-font);
+  font-size: 3.5cqw;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--nm-text-3);
+  opacity: 0.7;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8), 0 -1px 1px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  z-index: 2;
+}
+.nm-clock-week {
+  position: absolute;
+  left: 50%;
+  top: 73%;
+  transform: translateX(-50%);
+  font-family: var(--nm-font);
+  font-size: 4.5cqw;
+  font-weight: 400;
+  color: var(--nm-text-2);
+  letter-spacing: 0.1em;
+  opacity: 0.8;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ================= 3. 悬浮定位（与播放器对齐） ================= */
+.nm-clock-widget {
+  position: fixed;
+  right: max(24px, calc((100vw - var(--nm-max-w)) / 2 - var(--nm-side-right-offset) - 120px));
+  top: 100px; 
+  width: 180px;
+  height: 180px;
+  z-index: 1000;
+  pointer-events: none;
+  aspect-ratio: 1 / 1;
+}
+
+/* 低于 1680px 隐藏，防止挤压主内容 */
+@media screen and (max-width: 1680px) {
+  .nm-clock-widget {
+    display: none !important;
+  }
+}

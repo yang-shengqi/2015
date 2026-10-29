@@ -1,0 +1,175 @@
+/* ============================================================
+ * nm-13-player.css —— 音乐播放器
+ * ------------------------------------------------------------
+ * 定位由全局 token 控制，顶部对齐。
+ * ============================================================ */
+
+music-player {
+  position: fixed;
+  top: calc(var(--nm-side-top) + 20px); 
+  right: max(24px, calc((100vw - var(--nm-max-w)) / 2 - var(--nm-side-right-offset)) - 108px);
+  z-index: 1000;
+  
+  display: flex;
+  /* 👇 就是这里：把 column 改为 row */
+  flex-direction: row; 
+  
+  /* 横排的话，对齐方式也要从居中稍微调整一下，不然按钮会高低不平 */
+  align-items: center; 
+  justify-content: flex-start; /* 让按钮靠左排 */
+  
+  gap: var(--nm-sp-4); /* 这个间距依然保留，横排后就是按钮之间的左右间距 */
+  width: max-content;
+  user-select: none;
+}
+
+/* ================= 1. 基础按钮 ================= */
+.nm-bare-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--nm-r-full);
+  background: var(--nm-bg);
+  box-shadow: var(--nm-out-sm);
+  color: var(--nm-text-3);
+  cursor: pointer;
+  transition: all var(--nm-t);
+  flex-shrink: 0;
+}
+
+.nm-bare-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nm-bare-btn:hover {
+  color: var(--nm-accent);
+  box-shadow: var(--nm-out-hover);
+}
+
+.nm-bare-btn:active {
+  box-shadow: var(--nm-in-active);
+  color: var(--nm-accent);
+}
+
+/* ================= 2. 提示气泡（正下方居中，无阴影 + 完美小箭头） ================= */
+.nm-bare-btn::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 12px); 
+  left: 50%;
+  
+  /* 绝对居中 */
+  transform: translateX(-50%) translateY(-4px) scale(0.92);
+  transform-origin: top center;
+  
+  background: var(--nm-text);
+  color: var(--nm-bg);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  padding: 8px 14px;
+  border-radius: var(--nm-r-sm);
+  white-space: nowrap;
+  width: max-content;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+  z-index: 1100;
+}
+
+/* 👇 经典 border 三角法，绝对无缝 */
+.nm-bare-btn::before {
+  content: '';
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  
+  /* 绝对居中 */
+  transform: translateX(-50%) translateY(-4px) scale(0.92);
+  transform-origin: bottom center;
+  
+  /* 纯用边框画一个向上的三角形 */
+  border-width: 0 6px 6px 6px;
+  border-style: solid;
+  border-color: transparent transparent var(--nm-text) transparent;
+  
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+  z-index: 1100;
+}
+
+/* 悬停时的同步动画 */
+.nm-bare-btn:hover::after,
+.nm-bare-btn:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+/* ================= 3. 播放按钮特殊形态 ================= */
+.nm-bare-btn.-play {
+  width: 44px;
+  height: 44px;
+  color: var(--nm-text-3);
+  box-shadow: var(--nm-out);
+}
+
+.nm-bare-btn.-play svg {
+  width: 18px;
+  height: 18px;
+}
+
+.nm-bare-btn.-play:hover {
+  box-shadow: var(--nm-out-hover);
+  color: var(--nm-accent);
+}
+
+.nm-bare-btn.-play:active {
+  box-shadow: var(--nm-in);
+  color: var(--nm-accent);
+}
+
+/* ================= 4. 播放状态：VI 紫底色 + 呼吸灯 ================= */
+
+/* 播放按钮基础颜色固定为 VI 主紫 */
+.nm-bare-btn.-play {
+  color: var(--nm-accent) !important;
+}
+
+/* 暂停状态（三角形）恢复默认灰色，避免没播放也亮着紫灯 */
+.nm-bare-btn.-play:has(svg polygon) {
+  color: var(--nm-text-3) !important;
+}
+
+/* 播放状态（双竖线）时，开启无限平滑呼吸 */
+.nm-bare-btn.-play:has(svg rect) svg {
+  animation: breathe-pulse 1.6s ease-in-out infinite !important;
+}
+
+@keyframes breathe-pulse {
+  0%, 100% {
+    opacity: 0.5; /* 变暗发灰，与按钮底色自然融合 */
+  }
+  50% {
+    opacity: 1;   /* 完全亮起，纯正 VI 紫 */
+  }
+}
+
+/* 低于 1680px 隐藏，防止挤压主内容 */
+@media screen and (max-width: 1680px) {
+  music-player {
+    display: none !important;
+  }
+}

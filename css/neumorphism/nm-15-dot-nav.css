@@ -1,0 +1,95 @@
+/* ============================================================
+ * nm-05-left-float-nav.css —— 左侧竖向圆点悬浮导航
+ * ------------------------------------------------------------
+ * 定位由全局 token 控制，顶部对齐；
+ * 样式纯引用 nm-00-tokens.css，禁止写死色值。
+ * ============================================================ */
+
+.left-float-nav {
+  /* 几何尺寸 */
+  --lfn-dot: 16px;                                    /* 圆点直径 */
+  --lfn-gap: var(--nm-sp-4);                          /* 圆点间距 */
+
+  /* 固定定位：左侧自适应，顶部与右侧播放器统一 */
+  position: fixed;
+  top: var(--nm-side-top);
+  left: max(24px, calc((100vw - var(--nm-max-w)) / 2 - var(--nm-side-left-offset)) - 30px);
+  z-index: 1000;
+
+  /* 布局 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lfn-gap);
+}
+
+/* ========== 基础态：拟物凸起灰色圆点 ========== */
+.lfn-item {
+  position: relative;
+  display: block;
+  width: var(--lfn-dot);
+  height: var(--lfn-dot);
+  border-radius: var(--nm-r-full);
+  background: var(--nm-bg);
+  box-shadow: var(--nm-out-xs);
+  text-decoration: none;
+  outline: none;
+  cursor: pointer;
+  transition: background var(--nm-t), box-shadow var(--nm-t);
+}
+
+/* ========== 悬停 / 当前激活态：VI 色 + 微弱外发光 ========== */
+.lfn-item:hover,
+.lfn-item.active {
+  background: var(--nm-accent);
+}
+
+.lfn-item.active {
+  /* 1. 颜色只认系统 VI 变量 */
+  background: var(--nm-accent);
+  
+  /* 2. 阴影只认系统凸起变量（它内部已经包含了 --nm-dark 和 --nm-light） */
+  box-shadow: var(--nm-out-xs);
+  
+  /* 3. 如果你觉得视觉变小了，用比例缩放（这不属于颜色硬编码） */
+  transform: scale(1.1); 
+}
+
+.lfn-item:active {
+  box-shadow: var(--nm-in-active);
+}
+
+/* ========== 提示气泡（纯 CSS 实现，向右弹出） ========== */
+.lfn-item::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: calc(100% + 14px);
+  top: 50%;
+  transform: translateY(-50%) scale(0.92);
+  transform-origin: left center;
+  background: var(--nm-text);
+  color: var(--nm-on-accent);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 8px 14px;
+  border-radius: var(--nm-r-full);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+  z-index: 1100;
+}
+
+.lfn-item:hover::after,
+.lfn-item:focus-visible::after {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+@media screen and (max-width: 1440px) {
+  .left-float-nav {
+    display: none;
+  }
+}

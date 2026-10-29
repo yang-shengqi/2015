@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="staticrypt-html">
+<head>
+<meta charset="utf-8" />
+<meta name="robots" content="noindex, nofollow, nosnippet, noarchive">
+<title>杨晟琦的核心工具箱</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="expires" content="0" />
+<meta http-equiv="pragma" content="no-cache" />
+<style>
+:root{
+  --bg:#e0e5ec;
+  --shadow-dark:#b8bcc2;
+  --shadow-light:#ffffff;
+  --accent:#6d5dfc;
+  --text:#333333;
+  --text-2:#6b7280;
+  --text-3:#9aa3b5;
+  --sh-out-xs:2px 2px 4px var(--shadow-dark),-2px -2px 4px var(--shadow-light);
+  --sh-out-sm:4px 4px 8px var(--shadow-dark),-4px -4px 8px var(--shadow-light);
+  --sh-out:8px 8px 16px var(--shadow-dark),-8px -8px 16px var(--shadow-light);
+  --sh-out-lg:12px 12px 24px var(--shadow-dark),-12px -12px 24px var(--shadow-light);
+  --sh-hover:2px 2px 4px var(--shadow-dark),-2px -2px 4px var(--shadow-light);
+  --sh-in-xs:inset 1px 1px 3px var(--shadow-dark),inset -1px -1px 3px var(--shadow-light);
+  --sh-in-sm:inset 3px 3px 6px var(--shadow-dark),inset -3px -3px 6px var(--shadow-light);
+  --sh-in:inset 6px 6px 12px var(--shadow-dark),inset -6px -6px 12px var(--shadow-light);
+  --r-sm:12px;--r-md:16px;--r-lg:24px;--r-full:999px;
+  --t:300ms ease-in-out;
+  --font:"Microsoft YaHei","PingFang SC","Hiragino Sans GB","Segoe UI",Roboto,Helvetica,Arial,"Noto Sans SC",sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+*,*::before,*::after{box-sizing:border-box;font-family:var(--font);}
+html,body{height:100%;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-size:14px;line-height:1.7;-webkit-font-smoothing:antialiased;overflow:hidden;}
+.hidden{display:none !important;}
+#staticrypt_loading{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:var(--bg);}
+.spinner{width:38px;height:38px;border-radius:50%;border:3px solid transparent;box-shadow:var(--sh-out-sm);background:var(--bg);position:relative;animation:spin .9s linear infinite;}
+.spinner::after{content:"";position:absolute;inset:6px;border-radius:50%;border:3px solid transparent;border-top-color:var(--accent);animation:spin .9s linear infinite reverse;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#staticrypt_content{position:relative;z-index:1;min-height:100%;display:grid;place-items:center;padding:24px;animation:fadeUp .6s var(--t) both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+.card{position:relative;width:min(400px,100%);padding:40px 36px 32px;border-radius:var(--r-lg);background:var(--bg);box-shadow:var(--sh-out-lg);}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:26px;}
+.brand .mark{width:34px;height:34px;border-radius:10px;flex:0 0 auto;display:grid;place-items:center;background:var(--accent);box-shadow:var(--sh-out-sm);}
+.brand .name{font-size:14px;font-weight:700;letter-spacing:-.01em;color:var(--text);}
+.title{position:relative;margin:0 0 6px;font-size:22px;font-weight:800;letter-spacing:-.03em;color:var(--text);}
+.sub{margin:0 0 28px;font-size:13px;color:var(--text-3);}
+.form{display:flex;flex-direction:column;gap:14px;}
+.pwd{position:relative;border-radius:var(--r-md);background:var(--bg);box-shadow:var(--sh-in);transition:box-shadow var(--t);}
+.pwd:focus-within{box-shadow:var(--sh-in-xs);}
+.pwd input{width:100%;height:48px;padding:0 48px 0 16px;border:0;outline:0;background:transparent;color:var(--text);font-size:14px;font-family:inherit;letter-spacing:.02em;}
+.pwd input::placeholder{color:var(--text-3);letter-spacing:0;}
+.staticrypt-toggle-password-visibility{position:absolute;top:50%;right:12px;width:20px;height:20px;padding:0;margin:0;transform:translateY(-50%);cursor:pointer;opacity:.45;transition:opacity var(--t),transform var(--t);filter:invert(60%) sepia(8%) saturate(400%) hue-rotate(180deg);}
+.staticrypt-toggle-password-visibility:hover{opacity:1;transform:translateY(-50%) scale(1.08);}
+.remember{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--text-2);cursor:pointer;user-select:none;padding:2px 0;}
+.remember input[type="checkbox"]{appearance:none;-webkit-appearance:none;width:20px;height:20px;margin:0;flex:0 0 auto;border-radius:6px;background:var(--bg);box-shadow:var(--sh-out-sm);cursor:pointer;position:relative;transition:box-shadow var(--t);}
+.remember input[type="checkbox"]:hover{box-shadow:var(--sh-hover);}
+.remember input[type="checkbox"]:checked{box-shadow:var(--sh-in-sm);}
+.remember input[type="checkbox"]:checked::after{content:"";position:absolute;left:6px;top:2px;width:6px;height:11px;border:solid var(--accent);border-width:0 2px 2px 0;transform:rotate(45deg);}
+.submit{position:relative;height:48px;border:0;border-radius:var(--r-md);background:var(--bg);color:var(--text);font-family:inherit;font-size:14px;font-weight:650;letter-spacing:.18em;cursor:pointer;box-shadow:var(--sh-out-sm);transition:box-shadow var(--t),color var(--t);}
+.submit:hover{color:var(--accent);box-shadow:var(--sh-hover);}
+.submit:active{box-shadow:var(--sh-in-sm);}
+.err{min-height:18px;margin:10px 0 0;font-size:12.5px;line-height:1.5;text-align:center;color:#ef6b6b;}
+.foot{margin-top:24px;padding-top:18px;border-top:1px solid rgba(184,188,194,.35);text-align:center;font-size:11.5px;letter-spacing:.06em;color:var(--text-3);}
+.foot .timer{display:block;margin-bottom:6px;font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--text-2);}
+.foot .timer #display{color:var(--accent);font-variant-numeric:tabular-nums;}
+@media (max-width:480px){#staticrypt_content{padding:16px;}.card{padding:32px 24px 26px;}.title{font-size:20px;}}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important;}}
+</style>
+</head>
+<body>
+
+<div id="staticrypt_loading"><div class="spinner"></div></div>
+
+<div id="staticrypt_content" class="hidden">
+  <main class="card">
+    <div class="brand">
+      <span class="mark">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 5 L12 12 L19 5 M12 12 L12 20"/>
+        </svg>
+      </span>
+      <span class="name">Yang Shengqi's</span>
+    </div>
+
+    <h1 class="title">杨晟琦的核心工具箱</h1>
+    <p class="sub">请输入密码以继续访问</p>
+
+    <form id="staticrypt-form" action="#" method="post" class="form">
+      <div class="pwd">
+        <input id="staticrypt-password" type="password" name="password"
+               placeholder="Password" autofocus />
+        <img class="staticrypt-toggle-password-visibility"
+             tabindex="0" role="button"
+             alt="显示密码"
+             aria-label="显示密码"
+             title="显示密码"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}"
+             src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNTEyIj48cGF0aCBkPSJNMzguOCA1LjFDMjguNC0zLjEgMTMuMy0xLjIgNS4xIDkuMlMtMS4yIDM0LjcgOS4yIDQyLjlsNTkyIDQ2NGMxMC40IDguMiAyNS41IDYuMyAzMy43LTQuMXM2LjMtMjUuNS00LjEtMzMuN0w1MjUuNiAzODYuN2MzOS42LTQwLjYgNjYuNC04Ni4xIDc5LjktMTE4LjRjMy4zLTcuOSAzLjMtMTYuNyAwLTI0LjZjLTE0LjktMzUuNy00Ni4yLTg3LjctOTMtMTMxLjFDNDY1LjUgNjguOCA0MDAuOCAzMiAzMjAgMzJjLTY4LjIgMC0xMjUgMjYuMy0xNjkuMyA2MC44TDM4LjggNS4xek0yMjMuMSAxNDkuNUMyNDguNiAxMjYuMiAyODIuNyAxMTIgMzIwIDExMmM3OS41IDAgMTQ0IDY0LjUgMTQ0IDE0NGMwIDI0LjktNi4zIDQ4LjMtMTcuNCA2OC43TDQwOCAyOTQuNWM4LjQtMTkuMyAxMC42LTQxLjQgNC44LTYzLjNjLTExLjEtNDEuNS00Ny44LTY5LjQtODguNi03MS4xYy01LjgtLjItOS4yIDYuMS03LjQgMTEuN2MyLjEgNi40IDMuMyAxMy4yIDMuMyAyMC4zYzAgMTAuMi0yLjQgMTkuOC02LjYgMjguM2wtOTAuMy03MC44ek0zNzMgMzg5LjljLTE2LjQgNi41LTM0LjMgMTAuMS01MyAxMC4xYy03OS41IDAtMTQ0LTY0LjUtMTQ0LTE0NGMwLTYuOS41LTEzLjYgMS40LTIwLjJMOC4xIDE2MS41QzYwLjMgMTkxLjIgNDQgMjIwLjggMzQuNSAyNDMuN2MtMy4zIDcuOS0zLjMgMTYuNyAwIDI0LjZjMTQuOSAzNS43IDQ2LjIgODcuNyA5MyAxMzEuMUMxNzQuNSA0NDMuMiAyMzkuMiA0ODAgMzIwIDQ4MGM0Ny44IDAgODkuOS0xMi45IDEyNi4yLTMyLjVMMzczIDM4OS45eiIvPjwvc3ZnPg==" />
+      </div>
+
+      <label id="staticrypt-remember-label" class="remember hidden">
+        <input id="staticrypt-remember" type="checkbox" name="remember" />
+        <span>记住我</span>
+      </label>
+
+      <button type="submit" class="submit"><span>解 锁</span></button>
+      <p class="err" id="staticrypt-error" aria-live="polite"></p>
+    </form>
+
+    <div class="foot">
+      <span class="timer">Data running since 2015 · <span id="display">--</span></span>
+      <br>PBKDF2 + AES-256 + WebCrypto
+    </div>
+  </main>
+</div>
+
+<!-- 加密JS开始 -->
+<script>
+window.STATICRYPT_CONFIG = {"payload":"719855ee2088fd340b3ddeff64d6b83616286d5d5cf8ea8cbaad047a66ace0f460eabeec27bd3b323bf4f90446b1cbe4034248e96b0d6960de87c8669568e05d015955fe3ead8b5759781820964bf812b7f5dec50bf394bdb8db9ad91f14918417a7c73b9b3d5ebe499c0db48182f00b20a60ca5d975c21c0d5efd4ac878cc7680b8139ea4d9d6205bad36e9cc97d1b278010d80a205e8565f824a43f2b0de97f69716cb401dfc04d92314d815d251a9408170119135d2c39becc787eb289718f78564fee7bc4402bc46c65d184b015d82bfa05ec60ad7b64ecef8b9bcbd1c9e39b3110f84371a48a9f986ec37ef50314f81c6ec4388cc6e2fb44ac721ad784923ce0a194cbf7b7ca10829af81ab64019373d2f2d3ee6cc008b4b64bf67863d28641396c0267914a0bf0207cca3d8d705846a446affd6911be769b1649d1a890cd3e8e35fa247bf4070389cad6b3ca1bfa143bf78449f944950d648e5bcc908f7ae57a62f25d56b56fb623662afcef8b7f363aac4585a72d980c642c70762ee24b8e4dbb096ea0e65b76eec172d981b16e0f3fc756022dcbbef1fe178a0aa0c97fc0d74b31d908861fa8e45e7446b92409cee8757061dba13dd619f208e3719f2e65e40e9314a647cfcf303a75b3304b269fc44e5d06fbb6b5084f0a51b81b793f486a5671243a9c49384375f2822621b5a7181af8592e4d4f27431eb5bd7438815838250289a4b393a1878878fb0c6199a500e79ae4b333d50f362294f8ff432a4001f588841d8ab8a0c260234ed238e826b24330a4b73a780ae45adc1e70e78ec410ba0dbbc42ecd29fbdc80a501f1ae387c3bca1e77637d7371f36320894ecf68b2cb81baf4092e6f58d931ecc078bb44e59739075941b6606ec9ed0336b06de427f37b4a4154444aa65b583e0e4720205e051755c8eaac0a58a63cdc6107ff1cb6b701c6f2e20994759cb81d8a1bb936a3441554edad2d78fd2b3e0a8845c5820b80307d0690917ab4e172f76c2d154d30a20f40a462d67bfb22fdf75e696c70f4ef6f7aced150931d9da3ca04b0b4d9ba73dc825fc4da31a026ad1cfcf75c06a2336844c8619ac325a9b37c3c2cb42d95707e1a13237e173eadfbb87b6a833119794c0d54023a9bb2c96497287591e1b0a96c17ac2009ed6ddb463afd887dbdb07700e6ad66d7490d189d2ad20920ebc1f803de65dcbe77e7651ff59efc7472d04d542e0b4dc1054249f8feb69f2948b919f0e40ab66d266955e32ca19d607990f981725d2886bd3d92509db6b492d6ba519010929158347805a1765ae96a70a160585a1e5f2e4324a4796e144d3c10de0f7e5680463ee27565330708caf41fc08174d450a0caf5c9fc7f9d6cca5e47f19e70398d871a42b8106045ed9bdaa1819144283a131c97e838068a285ea55c30eff4f854bfdddd365cc8be81cd2ccffac899523af4370e672064d06ae88dbc47636d2508727190cfacc5483e231818f1a8f4022e5726518496a9e90a202c1e1c15f3f15940354bb5d7ee8f5f867bb0ccac77e277635473c4a8d16a95eedd703c9e4ed5d731efdeb95080e55b29","salt":"eb97c443c34ced647105d9334881bc63","remember":true,"rememberDays":0,"error":"密码错误，请重试","toggleShow":"显示密码","toggleHide":"隐藏密码"};
+</script>
+<script>
+(function (global) {
+  'use strict';
+
+  var cryptoObj = global.crypto;
+  var subtle = cryptoObj.subtle;
+  var IV_BITS = 128;
+  var HEX_BITS = 4;
+  var ALGO = 'AES-CBC';
+
+  var Hex = {
+    parse: function (hexString) {
+      if (hexString.length % 2 !== 0) throw new Error('Invalid hexString');
+      var buf = new Uint8Array(hexString.length / 2);
+      for (var i = 0; i < hexString.length; i += 2) {
+        var v = parseInt(hexString.substring(i, i + 2), 16);
+        if (isNaN(v)) throw new Error('Invalid hexString');
+        buf[i / 2] = v;
+      }
+      return buf;
+    },
+    stringify: function (bytes) {
+      var out = [];
+      for (var i = 0; i < bytes.length; ++i) {
+        var s = bytes[i].toString(16);
+        if (s.length < 2) s = '0' + s;
+        out.push(s);
+      }
+      return out.join('');
+    }
+  };
+
+  var Utf8 = {
+    parse: function (str) { return new TextEncoder().encode(str); },
+    stringify: function (bytes) { return new TextDecoder().decode(bytes); }
+  };
+
+  function pbkdf2(password, salt, iterations, hashAlgorithm) {
+    return subtle
+      .importKey('raw', Utf8.parse(password), 'PBKDF2', false, ['deriveBits'])
+      .then(function (key) {
+        return subtle.deriveBits(
+          { name: 'PBKDF2', hash: hashAlgorithm, iterations: iterations, salt: Utf8.parse(salt) },
+          key, 256
+        );
+      })
+      .then(function (bits) { return Hex.stringify(new Uint8Array(bits)); });
+  }
+
+  function hashLegacyRound(p, s) { return pbkdf2(p, s, 1000, 'SHA-1'); }
+  function hashSecondRound(p, s) { return pbkdf2(p, s, 14000, 'SHA-256'); }
+  function hashThirdRound(p, s)  { return pbkdf2(p, s, 585000, 'SHA-256'); }
+
+  function hashPassword(password, salt) {
+    return hashLegacyRound(password, salt)
+      .then(function (hp) { return hashSecondRound(hp, salt); })
+      .then(function (hp) { return hashThirdRound(hp, salt); });
+  }
+
+  function encrypt(msg, hashedPassword) {
+    var iv = cryptoObj.getRandomValues(new Uint8Array(IV_BITS / 8));
+    return subtle
+      .importKey('raw', Hex.parse(hashedPassword), ALGO, false, ['encrypt'])
+      .then(function (key) { return subtle.encrypt({ name: ALGO, iv: iv }, key, Utf8.parse(msg)); })
+      .then(function (enc) { return Hex.stringify(iv) + Hex.stringify(new Uint8Array(enc)); });
+  }
+
+  function decrypt(encryptedMsg, hashedPassword) {
+    var ivLen = IV_BITS / HEX_BITS;
+    var iv = Hex.parse(encryptedMsg.substring(0, ivLen));
+    var enc = encryptedMsg.substring(ivLen);
+    return subtle
+      .importKey('raw', Hex.parse(hashedPassword), ALGO, false, ['decrypt'])
+      .then(function (key) { return subtle.decrypt({ name: ALGO, iv: iv }, key, Hex.parse(enc)); })
+      .then(function (buf) { return Utf8.stringify(new Uint8Array(buf)); });
+  }
+
+  function signMessage(hashedPassword, message) {
+    return subtle
+      .importKey('raw', Hex.parse(hashedPassword), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+      .then(function (key) { return subtle.sign('HMAC', key, Utf8.parse(message)); })
+      .then(function (sig) { return Hex.stringify(new Uint8Array(sig)); });
+  }
+
+  function generateRandomSalt() {
+    return Hex.stringify(cryptoObj.getRandomValues(new Uint8Array(16)));
+  }
+
+  function encode(msg, password, salt) {
+    return hashPassword(password, salt).then(function (hp) {
+      return encrypt(msg, hp).then(function (enc) {
+        return signMessage(hp, enc).then(function (hmac) { return hmac + enc; });
+      });
+    });
+  }
+
+  function decode(signedMsg, hashedPassword, salt, attempt, originalPassword) {
+    attempt = attempt || 0;
+    originalPassword = originalPassword || '';
+    var encHMAC = signedMsg.substring(0, 64);
+    var encMsg = signedMsg.substring(64);
+    return signMessage(hashedPassword, encMsg).then(function (decHMAC) {
+      if (decHMAC !== encHMAC) {
+        originalPassword = originalPassword || hashedPassword;
+        if (attempt === 0) {
+          return hashThirdRound(originalPassword, salt).then(function (hp) {
+            return decode(signedMsg, hp, salt, attempt + 1, originalPassword);
+          });
+        }
+        if (attempt === 1) {
+          return hashSecondRound(originalPassword, salt).then(function (hp) {
+            return hashThirdRound(hp, salt);
+          }).then(function (hp) {
+            return decode(signedMsg, hp, salt, attempt + 1, originalPassword);
+          });
+        }
+        return { success: false, message: 'Signature mismatch' };
+      }
+      return decrypt(encMsg, hashedPassword).then(function (plain) {
+        return { success: true, decoded: plain };
+      });
+    });
+  }
+
+  global.StatiCryptEngine = {
+    encode: encode,
+    decode: decode,
+    hashPassword: hashPassword,
+    generateRandomSalt: generateRandomSalt
+  };
+})(window);
+</script>
+<script>
+(function () {
+  'use strict';
+  var cfg = window.STATICRYPT_CONFIG;
+  var eng = window.StatiCryptEngine;
+  var form = document.getElementById('staticrypt-form');
+  var loading = document.getElementById('staticrypt_loading');
+  var content = document.getElementById('staticrypt_content');
+  var errEl = document.getElementById('staticrypt-error');
+  var pwInput = document.getElementById('staticrypt-password');
+  var rememberLabel = document.getElementById('staticrypt-remember-label');
+  var rememberBox = document.getElementById('staticrypt-remember');
+  var toggleIcon = document.querySelector('.staticrypt-toggle-password-visibility');
+  var EXP_KEY = 'staticrypt_expiration';
+  var PW_KEY = 'staticrypt_passphrase';
+
+  function clearLS() {
+    try { localStorage.removeItem(PW_KEY); localStorage.removeItem(EXP_KEY); } catch (e) {}
+  }
+  function logoutIfNeeded() {
+    var q = new URLSearchParams(location.search);
+    if (q.has('staticrypt_logout')) { clearLS(); return true; }
+    if (location.hash.indexOf('staticrypt_logout') > -1) { clearLS(); return true; }
+    return false;
+  }
+  function replaceHtml(html) {
+    document.open(); document.write(html); document.close();
+  }
+  function tryDecrypt(hash, remember) {
+    return eng.decode(cfg.payload, hash, cfg.salt).then(function (r) {
+      if (!r.success) return { ok: false };
+      replaceHtml(r.decoded);
+      if (cfg.remember && remember) {
+        try {
+          localStorage.setItem(PW_KEY, hash);
+          if (cfg.rememberDays > 0) {
+            localStorage.setItem(EXP_KEY, String(Date.now() + cfg.rememberDays * 864e5));
+          }
+        } catch (e) {}
+      }
+      return { ok: true };
+    });
+  }
+  function fromRemember() {
+    if (logoutIfNeeded()) return Promise.resolve(false);
+    if (cfg.rememberDays > 0) {
+      var ex = null;
+      try { ex = localStorage.getItem(EXP_KEY); } catch (e) {}
+      if (ex && Date.now() > parseInt(ex, 10)) { clearLS(); return Promise.resolve(false); }
+    }
+    var hp = null;
+    try { hp = localStorage.getItem(PW_KEY); } catch (e) {}
+    if (!hp) return Promise.resolve(false);
+    return tryDecrypt(hp, false).then(function (r) {
+      if (!r.ok) { clearLS(); return false; }
+      return true;
+    });
+  }
+  function fromUrl() {
+    var q = new URLSearchParams(location.search);
+    var frag = location.hash.substring(1);
+    var m = frag.match(/staticrypt_pwd=([^&]*)/);
+    var hp = m ? decodeURIComponent(m[1]) : q.get('staticrypt_pwd');
+    if (!hp) return Promise.resolve(false);
+    var rm = frag.indexOf('remember_me') > -1 || q.has('remember_me');
+    return tryDecrypt(hp, rm).then(function (r) { return r.ok; });
+  }
+  function onLoad() {
+    return fromUrl().then(function (ok) { return ok || fromRemember(); });
+  }
+  function showForm() {
+    if (loading) loading.classList.add('hidden');
+    if (content) content.classList.remove('hidden');
+    if (rememberLabel && cfg.remember) rememberLabel.classList.remove('hidden');
+    if (pwInput) pwInput.focus();
+  }
+  function hashAndTry(password) {
+    return eng.hashPassword(password, cfg.salt).then(function (hp) {
+      return tryDecrypt(hp, rememberBox ? rememberBox.checked : false);
+    });
+  }
+
+  var EYE_CLOSED = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNTEyIj48cGF0aCBkPSJNMzguOCA1LjFDMjguNC0zLjEgMTMuMy0xLjIgNS4xIDkuMlMtMS4yIDM0LjcgOS4yIDQyLjlsNTkyIDQ2NGMxMC40IDguMiAyNS41IDYuMyAzMy43LTQuMXM2LjMtMjUuNS00LjEtMzMuN0w1MjUuNiAzODYuN2MzOS42LTQwLjYgNjYuNC04Ni4xIDc5LjktMTE4LjRjMy4zLTcuOSAzLjMtMTYuNyAwLTI0LjZjLTE0LjktMzUuNy00Ni4yLTg3LjctOTMtMTMxLjFDNDY1LjUgNjguOCA0MDAuOCAzMiAzMjAgMzJjLTY4LjIgMC0xMjUgMjYuMy0xNjkuMyA2MC44TDM4LjggNS4xek0yMjMuMSAxNDkuNUMyNDguNiAxMjYuMiAyODIuNyAxMTIgMzIwIDExMmM3OS41IDAgMTQ0IDY0LjUgMTQ0IDE0NGMwIDI0LjktNi4zIDQ4LjMtMTcuNCA2OC43TDQwOCAyOTQuNWM4LjQtMTkuMyAxMC42LTQxLjQgNC44LTYzLjNjLTExLjEtNDEuNS00Ny44LTY5LjQtODguNi03MS4xYy01LjgtLjItOS4yIDYuMS03LjQgMTEuN2MyLjEgNi40IDMuMyAxMy4yIDMuMyAyMC4zYzAgMTAuMi0yLjQgMTkuOC02LjYgMjguM2wtOTAuMy03MC44ek0zNzMgMzg5LjljLTE2LjQgNi41LTM0LjMgMTAuMS01MyAxMC4xYy03OS41IDAtMTQ0LTY0LjUtMTQ0LTE0NGMwLTYuOS41LTEzLjYgMS40LTIwLjJMOC4xIDE2MS41QzYwLjMgMTkxLjIgNDQgMjIwLjggMzQuNSAyNDMuN2MtMy4zIDcuOS0zLjMgMTYuNyAwIDI0LjZjMTQuOSAzNS43IDQ2LjIgODcuNyA5MyAxMzEuMUMxNzQuNSA0NDMuMiAyMzkuMiA0ODAgMzIwIDQ4MGM0Ny44IDAgODkuOS0xMi45IDEyNi4yLTMyLjVMMzczIDM4OS45eiIvPjwvc3ZnPg==';
+  var EYE_OPEN = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1NzYgNTEyIj48cGF0aCBkPSJNMjg4IDMyYy04MC44IDAtMTQ1LjUgMzYuOC0xOTIuNiA4MC42QzQ4LjYgMTU2IDE3LjMgMjA4IDIuNSAyNDMuN2MtMy4zIDcuOS0zLjMgMTYuNyAwIDI0LjZDMTcuMyAzMDQgNDguNiAzNTYgOTUuNCAzOTkuNEMxNDIuNSA0NDMuMiAyMDcuMiA0ODAgMjg4IDQ4MHMxNDUuNS0zNi44IDE5Mi42LTgwLjZjNDYuOC00My41IDc4LjEtOTUuNCA5My0xMzEuMWMzLjMtNy45IDMuMy0xNi43IDAtMjQuNmMtMTQuOS0zNS43LTQ2LjItODcuNy05My0xMzEuMUM0MzMuNSA2OC44IDM2OC44IDMyIDI4OCAzMnpNMTQ0IDI1NmExNDQgMTQ0IDAgMSAxIDI4OCAwIDE0NCAxNDQgMCAxIDEtMjg4IDB6bTE0NC02NGMwIDM1LjMtMjguNyA2NC02NCA2NGMtNy4xIDAtMTMuOS0xLjItMjAuMy0zLjNjLTUuNS0xLjgtMTEuOSAxLjYtMTEuNyA3LjRjLjMgNi45IDEuMyAxMy44IDMuMiAyMC43YzEzLjcgNTEuMiA2Ni40IDgxLjYgMTE3LjYgNjcuOXM4MS42LTY2LjQgNjcuOS0xMTcuNmMtMTEuMS00MS41LTQ3LjgtNjkuNC04OC42LTcxLjFjLTUuOC0uMi05LjIgNi4xLTcuNCAxMS43YzIuMSA2LjQgMy4zIDEzLjIgMy4zIDIwLjN6Ii8+PC9zdmc+';
+
+  if (toggleIcon && pwInput) {
+    toggleIcon.addEventListener('click', function () {
+      if (pwInput.type === 'password') {
+        pwInput.type = 'text';
+        toggleIcon.src = EYE_OPEN;
+        toggleIcon.alt = cfg.toggleHide;
+        toggleIcon.title = cfg.toggleHide;
+      } else {
+        pwInput.type = 'password';
+        toggleIcon.src = EYE_CLOSED;
+        toggleIcon.alt = cfg.toggleShow;
+        toggleIcon.title = cfg.toggleShow;
+      }
+    });
+  }
+
+  if (form) {
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var pw = pwInput ? pwInput.value : '';
+      if (!pw) { if (errEl) errEl.textContent = cfg.error; return; }
+      if (errEl) errEl.textContent = '';
+      var btn = form.querySelector('button[type="submit"]');
+      var old = btn ? btn.textContent : '';
+      if (btn) { btn.disabled = true; btn.textContent = '...'; }
+      hashAndTry(pw).then(function (r) {
+        if (!r.ok) {
+          if (errEl) errEl.textContent = cfg.error;
+          if (btn) { btn.disabled = false; btn.textContent = old; }
+        }
+      }).catch(function () {
+        if (errEl) errEl.textContent = cfg.error;
+        if (btn) { btn.disabled = false; btn.textContent = old; }
+      });
+    });
+  }
+
+  onLoad().then(function (done) {
+    if (done) return;
+    showForm();
+  }).catch(function () { showForm(); });
+})();
+</script>
+<!-- 加密JS结束 -->
+
+<script>
+(function(){
+  'use strict';
+  var startDate = new Date(2015, 0, 1, 0, 0, 0);
+  var display = document.getElementById('display');
+  if (!display) return;
+  function pad(n){ return String(n).padStart(2, '0'); }
+  function format(ms){
+    var s = Math.floor(ms / 1000);
+    var d = Math.floor(s / 86400);
+    var h = Math.floor((s % 86400) / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var ss = s % 60;
+    return d + 'D ' + pad(h) + ':' + pad(m) + ':' + pad(ss);
+  }
+  function render(){ display.textContent = format(Date.now() - startDate.getTime()); }
+  render();
+  setInterval(render, 1000);
+})();
+</script>
+
+</body>
+</html>
