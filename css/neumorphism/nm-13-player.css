@@ -7,7 +7,7 @@
 music-player {
   position: fixed;
   top: calc(var(--nm-side-top) + 100px); 
-  right: max(24px, calc((100vw - var(--nm-max-w)) / 2 - var(--nm-side-right-offset)) - 108px);
+  right: max(24px, calc((100vw - var(--nm-max-w)) / 2 - var(--nm-side-right-offset)) - 104px);
   z-index: 1000;
   
   display: flex;
