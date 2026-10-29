@@ -156,7 +156,7 @@
 .nm-clock-widget {
   position: fixed;
   right: max(24px, calc((100vw - var(--nm-max-w)) / 2 - var(--nm-side-right-offset) - 120px));
-  top: 100px; 
+  top: 200px; 
   width: 180px;
   height: 180px;
   z-index: 1000;
