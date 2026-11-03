@@ -1,0 +1,310 @@
+/* ============================================================
+   markdown.css —— 独立 1x2 卡片 + 三态切换
+============================================================ */
+
+/* ============================================================
+   视图模式切换（独立卡片凸起版）
+============================================================ */
+.md-mode-switch {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: var(--nm-sp-5);
+  margin-bottom: var(--nm-sp-5);
+}
+
+.md-mode-switch .pills {
+  display: flex;
+  width: 100%;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  gap: var(--nm-sp-5);
+  overflow: visible;
+}
+
+.md-mode-switch .pill {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  background: var(--nm-bg);
+  border-radius: var(--nm-r-md);
+  color: var(--nm-text-2);
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: var(--nm-out-sm);
+  transition: box-shadow var(--nm-t), color var(--nm-t);
+  margin: 0;
+}
+
+.md-mode-switch .pill:hover {
+  box-shadow: var(--nm-out-hover);
+  color: var(--nm-text);
+}
+
+.md-mode-switch .pill.active {
+  color: var(--nm-accent);
+  font-weight: 700;
+  box-shadow: var(--nm-out-sm);
+}
+
+.md-mode-switch .pill:active {
+  box-shadow: var(--nm-in-active);
+}
+
+/* ============================================================
+   外层布局：1x2 网格
+============================================================ */
+.md-layout {
+  margin-top: 0;
+  margin-bottom: var(--nm-sp-6);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--nm-sp-5);
+  height: calc(100vh - 280px);
+  min-height: 600px;
+}
+
+.md-layout[data-mode="edit"] {
+  grid-template-columns: 1fr;
+}
+.md-layout[data-mode="edit"] .md-pane-card[data-pane="preview"] {
+  display: none;
+}
+
+.md-layout[data-mode="preview"] {
+  grid-template-columns: 1fr;
+}
+.md-layout[data-mode="preview"] .md-pane-card[data-pane="source"] {
+  display: none;
+}
+
+/* ============================================================
+   左右独立的卡片
+============================================================ */
+.md-pane-card {
+  --card-pad: 0;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.md-pane-head {
+  padding: var(--nm-sp-4) var(--nm-sp-5) var(--nm-sp-2);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--nm-text-2);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.md-pane-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--nm-sp-2);
+  padding: var(--nm-sp-2) var(--nm-sp-5) var(--nm-sp-3);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  justify-content: flex-start;
+}
+
+.md-pane-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.md-pane-toolbar .btn {
+  --btn-h: 30px;
+  --btn-pad: 0 10px;
+  --btn-fs: 12px;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.md-pane-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--nm-sp-2) var(--nm-sp-4) var(--nm-sp-4);
+  gap: var(--nm-sp-2);
+}
+
+/* ============================================================
+   源码区（极简纯边框版）
+============================================================ */
+.md-editor-wrap {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  background: var(--nm-bg); /* 统一底色 */
+  border-radius: var(--nm-r-md);
+  overflow: hidden; 
+  border: 1px solid var(--nm-line); /* 只留边框 */
+}
+
+.md-editor-wrap .md-textarea {
+  flex: 1;
+  width: 100%;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent; 
+  box-shadow: none; 
+  border-radius: 0;
+  color: var(--nm-text);
+  font-family: var(--nm-mono);
+  font-size: 14px;
+  line-height: 1.7;
+  padding: var(--nm-sp-4) var(--nm-sp-4) var(--nm-sp-4) var(--nm-sp-3);
+  tab-size: 2;
+  overflow-y: auto;
+  overflow-x: hidden;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+
+.md-textarea::selection {
+  background: color-mix(in srgb, var(--nm-accent) 22%, transparent);
+}
+
+.md-line-numbers {
+  padding: var(--nm-sp-4) var(--nm-sp-2) var(--nm-sp-4) var(--nm-sp-4);
+  font-family: var(--nm-mono);
+  font-size: 14px;
+  line-height: 1.7; 
+  color: var(--nm-text-3);
+  text-align: right;
+  user-select: none;
+  background: transparent; /* 完全透明，和背景融为一体 */
+  border-right: 1px solid var(--nm-line); /* 只用细线分割 */
+  overflow: hidden; 
+  white-space: pre;
+}
+
+/* ============================================================
+   实时预览区（极简纯边框版）
+============================================================ */
+.md-preview-wrap {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--nm-bg); /* 统一底色 */
+  border: 1px solid var(--nm-line); /* 只留边框 */
+  border-radius: var(--nm-r-md);
+  padding: var(--nm-sp-4);
+  box-shadow: none; 
+}
+
+.md-preview-wrap > *:first-child {
+  margin-top: 0.5em !important; 
+}
+
+/* ============================================================
+   底部：状态栏
+============================================================ */
+.md-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--nm-sp-1);
+  font-size: 12px;
+  color: var(--nm-text-3);
+  flex-shrink: 0;
+}
+
+.md-status-bar span {
+  font-family: var(--nm-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   自定义滚动条（5px 圆角 VI 色）
+============================================================ */
+
+/* 针对 WebKit 浏览器（Chrome / Edge / Safari） */
+.md-textarea::-webkit-scrollbar,
+.md-preview-wrap::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+/* 滚动条轨道（背景） */
+.md-textarea::-webkit-scrollbar-track,
+.md-preview-wrap::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: var(--nm-r-full);
+}
+
+/* 滚动条滑块：默认状态（透明紫） */
+.md-textarea::-webkit-scrollbar-thumb,
+.md-preview-wrap::-webkit-scrollbar-thumb {
+  /* 默认 30% 透明度 */
+  background-color: color-mix(in srgb, var(--nm-accent) 30%, transparent);
+  border-radius: var(--nm-r-full);
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+/* 悬停和拖拽状态（实色 VI 紫） */
+.md-textarea::-webkit-scrollbar-thumb:hover,
+.md-textarea::-webkit-scrollbar-thumb:active,
+.md-preview-wrap::-webkit-scrollbar-thumb:hover,
+.md-preview-wrap::-webkit-scrollbar-thumb:active {
+  /* 还原为纯正的 100% 实色紫 */
+  background-color: var(--nm-accent);
+}
+
+/* 针对 Firefox 浏览器的兼容写法 */
+.md-textarea,
+.md-preview-wrap {
+  scrollbar-width: thin; 
+  /* Firefox 只能设置单一颜色，这里折中使用 30% 半透明 */
+  scrollbar-color: color-mix(in srgb, var(--nm-accent) 30%, transparent) transparent; 
+}
+
+/* ============================================================
+   预览区 Markdown 排版
+============================================================ */
+.md-preview-wrap h1, .md-preview-wrap h2, .md-preview-wrap h3 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; color: var(--nm-text); }
+.md-preview-wrap h1 { font-size: 2em; border-bottom: 1px solid var(--nm-line); padding-bottom: 0.3em; }
+.md-preview-wrap h2 { font-size: 1.5em; border-bottom: 1px solid var(--nm-line); padding-bottom: 0.3em; }
+.md-preview-wrap h3 { font-size: 1.25em; }
+.md-preview-wrap p { margin-bottom: 1em; color: var(--nm-text-2); }
+.md-preview-wrap ul, .md-preview-wrap ol { margin-bottom: 1em; padding-left: 2em; color: var(--nm-text-2); }
+.md-preview-wrap blockquote { margin: 1em 0; padding: 0.5em 1em; border-left: 4px solid var(--nm-accent); color: var(--nm-text-2); background: var(--nm-accent-soft); border-radius: 0 var(--nm-r-sm) var(--nm-r-sm) 0; }
+.md-preview-wrap pre { background: var(--nm-bg-light); padding: 1em; border-radius: var(--nm-r-sm); overflow-x: auto; margin-bottom: 1em; border: 1px solid var(--nm-line); }
+.md-preview-wrap code { font-family: var(--nm-mono); background: var(--nm-accent-soft); padding: 0.2em 0.4em; border-radius: 4px; font-size: 0.9em; color: var(--nm-accent); }
+.md-preview-wrap pre code { background: transparent; padding: 0; color: inherit; }
+.md-preview-wrap table { width: 100%; border-collapse: collapse; margin-bottom: 1em; }
+.md-preview-wrap th, .md-preview-wrap td { border: 1px solid var(--nm-line); padding: 0.5em 0.75em; color: var(--nm-text-2); }
+.md-preview-wrap th { background: var(--nm-bg-light); color: var(--nm-text); }
+.md-preview-wrap a { color: var(--nm-accent); text-decoration: none; }
+.md-preview-wrap a:hover { text-decoration: underline; }
+.md-preview-wrap .mermaid { text-align: center; margin: 1em 0; }
+.md-preview-wrap .mermaid svg { max-width: 100%; height: auto; }
+
+/* ============================================================
+   响应式
+============================================================ */
+@media (max-width: 860px) {
+  .md-mode-switch { display: none; }
+
+  .md-layout,
+  .md-layout[data-mode="edit"],
+  .md-layout[data-mode="preview"] {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 800px;
+  }
+
+  .md-layout .md-pane-card[data-pane="source"],
+  .md-layout .md-pane-card[data-pane="preview"] {
+    display: flex !important;
+  }
+}

@@ -1,0 +1,77 @@
+/* ============================================================
+ * nm-06-theme-toggle.css —— 日夜主题切换按钮（正圆微交互版）
+ * ============================================================ */
+
+.nm-theme-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--nm-bg);
+  box-shadow: var(--nm-out-sm);
+  color: var(--nm-text-2);
+  cursor: pointer;
+  /* 👈 加入 transform 过渡，让浮起效果更顺滑 */
+  transition: box-shadow var(--nm-t), color var(--nm-t), transform var(--nm-t);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 👈 悬停时：阴影变浅 + 按钮微微向上浮起并放大 1.03 倍 */
+.nm-theme-btn:hover {
+  box-shadow: var(--nm-out-hover);
+  color: var(--nm-accent);
+  transform: translateY(-1px) scale(1.03);
+}
+
+/* 👈 按下时：移除浮起，直接体现强烈的物理按压感 */
+.nm-theme-btn:active {
+  box-shadow: var(--nm-in-active);
+  transform: translateY(0) scale(0.96);
+}
+
+/* 键盘焦点 */
+.nm-theme-btn:has(.nm-theme-btn__input:focus-visible) {
+  outline: 3px solid color-mix(in srgb, var(--nm-accent) 55%, transparent);
+  outline-offset: 2px;
+}
+
+/* 隐藏原生 checkbox */
+.nm-theme-btn__input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ================= 图标 ================= */
+.nm-theme-btn__icon {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+  /* 👈 加入旋转过渡 */
+  transition: transform var(--nm-t);
+}
+
+/* 👈 悬停时：让里面的月亮/太阳轻轻转 15 度 */
+.nm-theme-btn:hover .nm-theme-btn__icon {
+  transform: rotate(15deg);
+}
+
+/* 日间/夜间切换（保留原来的 display 切换，避免冲突） */
+.nm-theme-btn__icon--sun { display: none; }
+.nm-theme-btn__icon--moon { display: block; }
+
+.nm-theme-btn__input:checked ~ .nm-theme-btn__icon--sun { display: block; }
+.nm-theme-btn__input:checked ~ .nm-theme-btn__icon--moon { display: none; }

@@ -1,0 +1,95 @@
+/* ============================================================
+ * nm-00-tokens-dark.css —— 夜间主题令牌覆盖层 (增强立体版)
+ * ============================================================ */
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* ================= 1. 基础颜色 ================= */
+  --nm-bg:        #151820;   /* 中性面（就是你觉得更好的那个颜色） */
+  --nm-bg-light:  #1b1e28;   /* 浅色面：比中性面稍亮一点点，用于微弱的层次区分 */
+  --nm-dark:      #0a0c10;   /* 暗部：带一点点极弱的深蓝，让阴影不“死灰” */
+  --nm-light:     #262b39;   /* 高光：配合主底色提亮，保证边缘凸起的光泽感 */  
+  --nm-inset-bg:  #10131a;   /* 凹槽面：比中性面深一档，用于输入框内部 */
+
+  /* ================= 2. 主题色与状态色 ================= */
+  --nm-accent:      #8b7dff;
+  --nm-on-accent:   #ffffff;
+  --nm-accent-soft: color-mix(in srgb, var(--nm-accent) 20%, transparent);
+
+  /* ================= 3. 文本层级 ================= */
+  --nm-text:        #dce3ed;
+  --nm-text-2:      #b0b8c6;
+  --nm-text-3:      #7e8798;
+
+  /* ================= 4. 语义状态色 ================= */
+  --nm-ok:          #3ddbc5;
+  --nm-warn:        #f5b264;
+  --nm-fail:        #f57f7f;
+
+  /* ================= 5. 图表色板 ================= */
+  --nm-c1: var(--nm-accent);
+  --nm-c2: #5fd9d0;
+  --nm-c3: #f2a878;
+  --nm-c4: #b9a5ff;
+
+  /* ================= 6. 标签底色 ================= */
+  --nm-asset-stock-soft: color-mix(in srgb, var(--nm-accent) 28%, transparent);
+  --nm-asset-bond-soft:  color-mix(in srgb, var(--nm-ok)      26%, transparent);
+  --nm-asset-cash-soft:  color-mix(in srgb, var(--nm-warn)    28%, transparent);
+  --nm-asset-other-soft: color-mix(in srgb, var(--nm-fail)    26%, transparent);
+  --nm-asset-type-soft:  rgba(255, 255, 255, .08);
+
+  /* ================= 7. 线条 ================= */
+  --nm-line:      rgba(255, 255, 255, .12);
+  --nm-line-soft: rgba(255, 255, 255, .07);
+
+  /* ================= 8. 遮罩 ================= */
+  --nm-overlay: rgba(6, 8, 12, .85);
+}
+
+/* ============================================================
+ * 夜间局部修补
+ * ============================================================ */
+
+/* 1. 上传区虚线框 */
+html[data-theme="dark"] .upload-area {
+  border: 1px solid var(--nm-line-soft);   /* 默认态可感知 */
+}
+html[data-theme="dark"] .upload-area.dragover,
+html[data-theme="dark"] .upload-area.over {
+  outline: 2px dashed var(--nm-accent);
+  outline-offset: -8px;
+}
+
+/* 2. 输入框内部：走变量，不再硬编码 */
+html[data-theme="dark"] .nm-textarea {
+  background: var(--nm-inset-bg);   /* 由 #14171c 改为变量 */
+}
+
+/* 3. 滚动条：补 transparent 边框让 background-clip 真正生效 */
+html[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, .18);
+  background-clip: content-box;
+  border: 3px solid transparent;   /* content-box 需要边框才能内缩 */
+}
+
+/* 4. 挂钟 */
+html[data-theme="dark"] .nm-clock-face {
+  border-color: rgba(255, 255, 255, .05);
+}
+html[data-theme="dark"] .nm-clock-hand {
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, .6);   /* 删掉语法错误的 inset 行 */
+}
+html[data-theme="dark"] .nm-clock-center {
+  box-shadow:
+    inset 1px 1px 3px rgba(0, 0, 0, .7),
+    1px 1px 3px rgba(0, 0, 0, .5);
+}
+
+/* 5. 弹窗 */
+html[data-theme="dark"] .modal__box {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, .08),
+    0 24px 60px rgba(0, 0, 0, .7);
+}

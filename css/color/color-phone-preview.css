@@ -1,0 +1,212 @@
+/* ================= 手机预览组件样式 ================= */
+
+/* 1. 基础容器与布局 */
+#phone-preview-container { 
+  margin: 0; 
+  padding: 0;
+  display: flex; 
+  justify-content: center; 
+  width: 100%;
+}
+
+.cp-flex-row { 
+  display: flex; 
+  justify-content: center; 
+  gap: 80px; 
+  width: 100%; 
+}
+
+.co-phone-wrap { 
+  display: flex; 
+  flex-direction: column; 
+  flex: 1; 
+  min-width: 0; 
+  max-width: 320px; 
+  position: relative; 
+}
+
+.co-phone-label { 
+  font-size: 14px; 
+  color: var(--nm-text-3, #8A939B); 
+  font-weight: 600; 
+  margin-bottom: 32px; /* 增加了和手机壳的间距 */
+  width: 100%; 
+  letter-spacing: 1px; 
+  text-align: center; 
+}
+
+/* 2. 手机外壳与阴影 */
+.co-phone-mockup {
+  position: relative; 
+  width: 100%; 
+  aspect-ratio: 9 / 19.5; 
+  background: #151820; 
+  border-radius: 40px; 
+  overflow: hidden; 
+  /* 清理了老的阴影，只保留黑边和系统级的拟物阴影 */
+  box-shadow: 
+    0 0 0 10px #111, 
+    var(--nm-out-lg); 
+}
+
+/* 3. 手机内部通用元素 */
+.cp-bg { position: absolute; inset: 0; display: flex; z-index: 0; }
+.cp-bg .left { width: 50%; height: 100%; transition: background 0.3s; }
+.cp-bg .right { width: 50%; height: 100%; transition: background 0.3s; }
+
+.cp-status { position: absolute; top: 0; left: 0; width: 100%; height: 54px; z-index: 15; display: flex; justify-content: space-between; align-items: center; padding: 0 26px; font-size: 15px; font-weight: 600; font-family: "Inter", sans-serif; pointer-events: none; transition: color 0.3s; box-sizing: border-box; }
+.cp-island { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: 110px; height: 32px; background: #000; border-radius: 20px; z-index: 20; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+.cp-island::after { content: ""; position: absolute; right: 12px; top: 10px; width: 10px; height: 10px; background: radial-gradient(circle at 30% 30%, #1a1a1a 10%, #000 80%); border-radius: 50%; }
+
+.cp-sig { display: flex; align-items: flex-end; gap: 1.5px; height: 10px; }
+.cp-sig i { display: block; width: 3px; background: currentColor; border-radius: 1px; }
+.cp-sig i:nth-child(1) { height: 4px; }
+.cp-sig i:nth-child(2) { height: 6px; }
+.cp-sig i:nth-child(3) { height: 8px; }
+.cp-sig i:nth-child(4) { height: 10px; }
+.cp-batt { position: relative; width: 22px; height: 11px; border: 1px solid currentColor; border-radius: 3px; padding: 1px; display: flex; align-items: center; margin-left: 6px;}
+.cp-batt::after { content: ""; position: absolute; right: -3px; top: 2px; width: 1.5px; height: 5px; background: currentColor; border-radius: 0 1px 1px 0; }
+.cp-batt-lv { width: 85%; height: 100%; background: currentColor; border-radius: 1px; }
+
+/* 4. 标题与页脚 */
+.cp-title { position: relative; z-index: 2; text-align: center; padding-top: 85px; transition: color 0.3s; }
+.cp-title h1 { margin-bottom: 12px; font-weight: 600; font-family: "Noto Serif SC", "Songti SC", "SimSun", serif; white-space: nowrap; }
+.cp-title p { font-size: 12px; letter-spacing: 6px; opacity: 0.8; font-family: "Inter", sans-serif; }
+.cp-footer { position: absolute; bottom: 25px; right: 25px; z-index: 2; font-size: 13px; opacity: 0.9; font-family: "Inter", sans-serif; transition: color 0.3s; }
+
+.cp-branch-svg { position: absolute; top: 0; left: 0; width: 60%; height: 100%; z-index: 10; pointer-events: none; }
+
+/* 5. 八角形卡片通用样式 */
+.cp-cards { position: absolute; top: 160px; bottom: 60px; left: 0; right: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; padding: 0 10px; }
+.card-wrapper { position: relative; filter: drop-shadow(0 12px 15px rgba(0,0,0,0.25)); }
+
+.cp-card { 
+  position: relative; width: 240px; height: 240px; 
+  display: flex; flex-direction: column; align-items: center; justify-content: center; 
+  clip-path: polygon(29.3% 0%, 70.7% 0%, 100% 29.3%, 100% 70.7%, 70.7% 100%, 29.3% 100%, 0% 70.7%, 0% 29.3%); 
+  transition: background 0.3s, color 0.3s;
+}
+.cp-card::after { content: ""; position: absolute; inset: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.15'/%3E%3C/svg%3E"); pointer-events: none; z-index: 1; }
+.cp-card::before { content: ""; position: absolute; inset: 18px; background-image: url("data:image/svg+xml,%3Csvg width='100%25' height='100%25' viewBox='0 0 204 204' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M 59.8 0 L 144.2 0 L 204 59.8 L 204 144.2 L 144.2 204 L 59.8 204 L 0 144.2 L 0 59.8 Z' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='1.5' /%3E%3C/svg%3E"); background-size: 100% 100%; pointer-events: none; z-index: 2; }
+
+.cp-card .subtitle { font-size: 14px; letter-spacing: 6px; margin-top: 5px; margin-bottom: 12px; opacity: 0.9; z-index: 3; font-family: "Noto Serif SC", serif; }
+.cp-card .main-title { font-size: 48px; font-weight: 600; letter-spacing: 8px; margin-bottom: 18px; z-index: 3; font-family: "Playfair Display", "Noto Serif SC", serif; text-align: center; }
+.cp-card .info { 
+  font-size: 14px; 
+  line-height: 1.8; 
+  text-align: center; 
+  z-index: 3; 
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif; 
+  letter-spacing: 2px; /* 保留你原本的 2px 宽字距 */
+}
+
+/* 6. 卡片网格布局 */
+.cp-cards.cp-grid-2 { justify-content: space-evenly; }
+.cp-grid-2 .card-wrapper, .cp-grid-2 .cp-card { width: 180px; height: 180px; }
+.cp-grid-2 .cp-card .main-title { font-size: 30px; margin-bottom: 12px; letter-spacing: 6px; }
+.cp-grid-2 .cp-card .subtitle { font-size: 12px; margin-bottom: 8px; letter-spacing: 4px; }
+.cp-grid-2 .cp-card .info { font-size: 12px; letter-spacing: 1px; }
+.cp-grid-2 .cp-card::before { inset: 14px; }
+
+.cp-cards.cp-grid-3, .cp-cards.cp-grid-4, .cp-cards.cp-grid-5 { display: grid; justify-content: center; align-content: center; }
+.cp-grid-3, .cp-grid-4, .cp-grid-5 { grid-template-columns: 1fr 1fr; }
+.cp-grid-3 { gap: 20px; }
+.cp-grid-4 { gap: 40px; }
+.cp-grid-5 { gap: 20px; }
+
+.cp-grid-3 .card-wrapper, .cp-grid-4 .card-wrapper, .cp-grid-5 .card-wrapper,
+.cp-grid-3 .cp-card, .cp-grid-4 .cp-card, .cp-grid-5 .cp-card { width: 120px; height: 120px; }
+
+.cp-grid-3 .cp-card .main-title, .cp-grid-4 .cp-card .main-title, .cp-grid-5 .cp-card .main-title { font-size: 22px; margin-bottom: 6px; letter-spacing: 4px; }
+.cp-grid-3 .cp-card .subtitle, .cp-grid-4 .cp-card .subtitle, .cp-grid-5 .cp-card .subtitle { font-size: 10px; margin-bottom: 4px; letter-spacing: 3px; }
+.cp-grid-3 .cp-card .info, .cp-grid-4 .cp-card .info, .cp-grid-5 .cp-card .info { font-size: 10px; letter-spacing: 1px; }
+.cp-grid-3 .cp-card::before, .cp-grid-4 .cp-card::before, .cp-grid-5 .cp-card::before { inset: 10px; }
+
+/* 7. 悬浮按钮 */
+.cp-float-btn {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 44px; height: 44px; border-radius: 50%; border: none;
+  background: var(--nm-bg, #e0e5ec);
+  /* 替换为系统拟物阴影 */
+  box-shadow: var(--nm-out-sm); 
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #8A939B; transition: all 0.2s; outline: none; z-index: 10;
+}
+.cp-float-btn:hover { color: var(--nm-accent, #2f6f8f); }
+.cp-float-btn:active { box-shadow: var(--nm-in-sm); }
+.cp-float-btn svg { width: 20px; height: 20px; }
+
+.cp-float-btn-left { right: 100%; margin-right: 60px; }
+.cp-float-btn-right { left: 100%; margin-left: 60px; }
+
+/* 8. 手机预览亮暗主题控制 */
+.cp-theme-light { color: #111; }
+.cp-theme-light h1,
+.cp-theme-light p { color: rgba(0, 0, 0, 0.8); opacity: 1; }
+.cp-theme-light .cp-footer { color: #111; }
+
+.cp-theme-dark { color: #FFF; }
+.cp-theme-dark h1,
+.cp-theme-dark p { color: rgba(255, 255, 255, 0.8); opacity: 1; }
+.cp-theme-dark .cp-footer { color: #FFF; }
+
+/* ================= 9. 移动端响应式适配 ================= */
+@media (max-width: 768px) {
+  .cp-flex-row {
+    flex-direction: column;
+    gap: 40px;
+    align-items: center;
+  }
+
+  .co-phone-wrap {
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .cp-float-btn {
+    display: none; /* 手机端隐藏悬浮按钮 */
+  }
+
+  .cp-title h1 { 
+    font-size: 22px !important; 
+    letter-spacing: 4px !important; 
+    margin-left: 4px !important;
+  }
+  .cp-title p { 
+    font-size: 10px !important; 
+    letter-spacing: 2px !important; 
+  }
+  
+  .cp-grid-2 .cp-card,
+  .cp-grid-2 .card-wrapper {
+    width: 140px;
+    height: 140px;
+  }
+  .cp-grid-2 .cp-card .main-title { font-size: 24px; letter-spacing: 4px; }
+  .cp-grid-2 .cp-card .subtitle { font-size: 10px; }
+  .cp-grid-2 .cp-card .info { font-size: 10px; }
+  .cp-grid-2 .cp-card::before { inset: 10px; }
+}
+
+/* 截图下载按钮 */
+.cp-download-btn {
+  margin-top: 42px;
+  padding: 8px 18px;
+  border-radius: var(--nm-r-sm, 8px);
+  border: none;
+  background: var(--nm-bg, #e0e5ec);
+  box-shadow: var(--nm-out-sm);
+  color: var(--nm-text-2, #555);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  align-self: center; /* 让按钮居中 */
+}
+.cp-download-btn:hover {
+  color: var(--nm-accent, #2f6f8f);
+  box-shadow: var(--nm-out);
+}
+.cp-download-btn:active {
+  box-shadow: var(--nm-in-sm);
+}

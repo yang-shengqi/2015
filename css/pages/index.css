@@ -1,0 +1,198 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ============================================================
+ * 1. 变量桥接：接入全局令牌系统，同时保留你原本的深色兜底
+ * ============================================================ */
+:root {
+  --bg: var(--nm-bg, #1e2126); 
+  --indigo: var(--nm-accent, #6d5dfc);
+  --indigo-100: var(--nm-text-2, #e0e7ff);
+  --indigo-200: #c7d2fe;
+  --text-800: var(--nm-text, #f8fafc);
+  --text-700: var(--nm-text-2, #e2e8f0);
+  --text-600: var(--nm-text-2, #cbd5e1);
+  --text-500: var(--nm-text-3, #94a3b8);
+  --text-400: var(--nm-text-3, #64748b);
+  
+  --neu-out: var(--nm-out-sm, 6px 6px 12px #14161a, -6px -6px 12px #282b31);
+  --neu-out-lg: var(--nm-out, 8px 8px 16px #14161a, -8px -8px 16px #282b31);
+  --neu-in: var(--nm-in, inset 4px 4px 8px #14161a, inset -4px -4px 8px #282b31);
+}
+
+/* ============================================================
+ * 2. 右上角悬浮日夜切换按钮
+ * ============================================================ */
+.page-theme-toggle {
+  position: fixed; top: 20px; right: 20px; z-index: 9999;
+  display: flex; justify-content: center; align-items: center;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--bg); box-shadow: var(--neu-out);
+  cursor: pointer; transition: box-shadow 0.2s;
+}
+.page-theme-toggle:active { box-shadow: var(--neu-in); }
+.page-theme-toggle .nm-theme-btn__input { display: none; }
+.page-theme-toggle .nm-theme-btn__icon {
+  width: 20px; height: 20px; fill: none; stroke: var(--text-600); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  position: absolute; transition: opacity 0.3s, transform 0.3s;
+}
+html[data-theme="light"] .nm-theme-btn__icon--sun { opacity: 0; transform: rotate(90deg); }
+html[data-theme="light"] .nm-theme-btn__icon--moon { opacity: 1; transform: rotate(0); }
+html[data-theme="dark"] .nm-theme-btn__icon--sun { opacity: 1; transform: rotate(0); stroke: var(--text-800); }
+html[data-theme="dark"] .nm-theme-btn__icon--moon { opacity: 0; transform: rotate(-90deg); }
+
+/* ============================================================
+ * 3. 基础布局与文字
+ * ============================================================ */
+body {
+  display: flex; justify-content: center; align-items: center;
+  min-height: 100vh; padding: 2rem; background: var(--bg);
+  color: var(--text-700); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.carousel-wrap { position: relative; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 1100px; }
+.header { margin-bottom: 1rem; text-align: center; display: flex; flex-direction: column; align-items: center; }
+.title { margin-bottom: 1rem; color: var(--text-800); font-size: 2.25rem; font-weight: 700; }
+.title .highlight { color: var(--indigo); }
+.desc-date { display: block; margin-top: 0.35rem; color: var(--text-400); font-size: 0.9rem; letter-spacing: 0.05em; }
+
+/* ============================================================
+ * 4. 顶部导航 Tabs
+ * ============================================================ */
+.tabs-wrap { margin-top: 1.5rem; margin-bottom: 30px; display: flex; justify-content: center; }
+
+.tabs {
+  position: relative; display: inline-flex; align-items: center; padding: 8px; border-radius: 9999px; 
+  background: var(--bg); box-shadow: var(--nm-in, inset 6px 6px 12px #14161a, inset -6px -6px 12px #282b31); gap: 4px;
+}
+
+.tab-indicator {
+  position: absolute; top: 6px; bottom: 6px; left: 0; border-radius: 9999px;
+  background: var(--bg); box-shadow: var(--nm-out-xs, 3px 3px 6px #14161a, -3px -3px 6px #282b31);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1), width 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+  z-index: 1; pointer-events: none;
+}
+
+.tab {
+  position: relative; z-index: 2; padding: 0.6rem 1.75rem; border: none; border-radius: 9999px;
+  background: transparent; color: var(--text-500); font-family: inherit; font-size: 0.95rem; font-weight: 500;
+  cursor: pointer; transition: color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.tab:hover:not(.active) { color: var(--text-700); box-shadow: var(--nm-out-xs, 3px 3px 6px #14161a, -3px -3px 6px #282b31); }
+.tab.active { color: var(--indigo); font-weight: 700; box-shadow: none; }
+.tab:active { transform: scale(0.96); }
+
+/* ============================================================
+ * 5. 轮播与卡片主体
+ * ============================================================ */
+.arrow-btn {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  width: 3rem; height: 3rem; border: none; border-radius: 50%;
+  background: var(--bg); color: var(--text-600); font-size: 1.25rem; font-weight: bold;
+  box-shadow: var(--neu-out); cursor: pointer; transition: box-shadow 0.2s;
+}
+.arrow-btn:active { box-shadow: var(--neu-in); }
+#btn-prev { left: -50px; }
+#btn-next { right: -50px; }
+
+.viewport { overflow: hidden; width: 100%; padding: 2.5rem 0; }
+.track { display: flex; align-items: stretch; will-change: transform; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
+.no-transition, .no-transition * { transition: none !important; }
+
+.card {
+  position: relative; display: flex; flex-direction: column; flex-shrink: 0;
+  margin-right: 20px; padding: 2rem; border-radius: 1.5rem;
+  background: var(--bg); box-shadow: var(--neu-out);
+  text-decoration: none; opacity: 0.4; transform: scale(0.92); cursor: pointer;
+  word-break: break-word;
+  transition: opacity 0.4s ease, transform 0.4s ease, box-shadow 0.4s ease, filter 0.4s ease, background-color 0.4s ease;
+}
+.card.is-active {
+  z-index: 2; background: var(--indigo); box-shadow: 0 10px 30px rgba(109, 93, 252, 0.3);
+  opacity: 1; transform: scale(1.05); filter: none !important;
+}
+
+/* 发光扫过动画 */
+.card.is-active::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.25) 50%, transparent 65%);
+  background-size: 250% 100%; background-position: 150% 0; pointer-events: none; z-index: 10; opacity: 0;
+}
+.card.is-active.sweep-down::before { animation: sweepDownAnim 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+.card.is-active.sweep-up::before { animation: sweepUpAnim 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+@keyframes sweepDownAnim { 0% { background-position: 150% 0; opacity: 1; } 100% { background-position: -50% 0; opacity: 1; } }
+@keyframes sweepUpAnim { 0% { background-position: -50% 0; opacity: 1; } 100% { background-position: 150% 0; opacity: 1; } }
+
+.card-inner-relative { display: flex; flex-direction: column; width: 100%; height: 100%; pointer-events: none; }
+.popular-badge {
+  position: absolute; top: -0.75rem; left: 50%; transform: translateX(-50%); z-index: 10;
+  display: none; padding: 0.25rem 1rem; border-radius: 9999px;
+  background: #fff; color: var(--indigo); font-size: 0.75rem; font-weight: 700;
+  white-space: nowrap; box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+}
+.card.is-active .popular-badge { display: block; }
+
+.plan-name { margin-top: 1rem; margin-bottom: 0.25rem; color: var(--text-800); font-size: 1.125rem; font-weight: 700; transition: color 0.3s; }
+.plan-desc { min-height: 2.5rem; margin-bottom: 1.5rem; color: var(--text-500); font-size: 0.875rem; transition: color 0.3s; }
+.price-row { display: flex; align-items: flex-end; gap: 0.25rem; }
+.price { color: var(--text-800); font-size: 3rem; font-weight: 700; line-height: 1; transition: color 0.3s; }
+.period { margin-bottom: 0.25rem; color: var(--text-400); font-size: 0.875rem; transition: color 0.3s; }
+.features { flex-grow: 1; margin-bottom: 2rem; list-style: none; }
+.features li { display: flex; align-items: flex-start; gap: 0.625rem; margin-bottom: 0.75rem; color: var(--text-600); font-size: 0.875rem; line-height: 1.4; transition: color 0.3s; }
+.features li:last-child { margin-bottom: 0; }
+.features svg { flex-shrink: 0; margin-top: 0.125rem; stroke: var(--indigo); transition: stroke 0.3s; }
+
+.cta { width: 100%; padding: 0.75rem; border: none; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 600; text-align: center; pointer-events: none; transition: all 0.2s; }
+.cta.normal { background: var(--bg); color: var(--text-700); box-shadow: var(--neu-out); }
+.cta.normal:active { box-shadow: var(--neu-in); }
+.cta.highlighted { background: #fff; color: var(--indigo); box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+.cta.highlighted:active { box-shadow: inset 2px 2px 6px rgba(0,0,0,0.1); }
+
+/* ============================================================
+ * 6. 👇 激活卡片文字修复（核心区域）
+ * 强制把紫色卡片里的灰字改为纯白/高亮白
+ * ============================================================ */
+.card.is-active .plan-name, 
+.card.is-active .price,
+.card.is-active .features svg { 
+  color: #ffffff; 
+  stroke: #ffffff; 
+}
+
+.card.is-active .plan-desc, 
+.card.is-active .period, 
+.card.is-active .features li { 
+  color: rgba(255, 255, 255, 0.85); /* 淡淡的白色，保证层次感 */
+}
+
+/* ============================================================
+ * 7. 底部圆点与响应式
+ * ============================================================ */
+.dots-wrap { display: flex; justify-content: center; align-items: center; gap: 0.25rem; margin-top: 50px; }
+.nm-radio {
+  -webkit-appearance: none; appearance: none; display: block;
+  margin: 10px; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; outline: none;
+  background-color: var(--bg); box-shadow: var(--nm-in-xs, inset 2px 2px 5px #14161a, inset -2px -2px 5px #282b31);
+  background-image: radial-gradient(circle at center, var(--indigo) 0%, var(--indigo) 10%, color-mix(in srgb, var(--indigo) 15%, transparent) 50%, transparent 100%);
+  background-repeat: no-repeat;
+  transition: background-position .15s cubic-bezier(.8, 0, 1, 1), transform .25s cubic-bezier(.8, 0, 1, 1);
+}
+.nm-radio:focus-visible { outline: 2px solid var(--indigo); outline-offset: 3px; }
+.nm-radio:active { transform: scale(1.4); transition: transform .1s cubic-bezier(0, 0, .2, 1); }
+.nm-radio, .nm-radio:active { background-position: 20px 0; }
+.nm-radio:checked { background-position: 0 0; transition: background-position .2s .15s cubic-bezier(0, 0, .2, 1), transform .25s cubic-bezier(.8, 0, 1, 1); }
+.nm-radio:checked ~ .nm-radio, .nm-radio:checked ~ .nm-radio:active { background-position: -20px 0; }
+
+@media (max-width: 900px) { #btn-prev { left: -18px; } #btn-next { right: -18px; } }
+@media (max-width: 768px) {
+  .title { font-size: 1.5rem; }
+  .arrow-btn { width: 2.5rem; height: 2.5rem; font-size: 1rem; }
+  #btn-prev { left: 2px; } #btn-next { right: 2px; }
+  .card { padding: 1.5rem; }
+  .price { font-size: 2.5rem; }
+  .dots-wrap { gap: 0.25rem; }
+  .tab { padding: 0.55rem 1.15rem; font-size: 0.875rem; }
+}
