@@ -1,5 +1,5 @@
 /* ============================================================
- * color-phone-preview.js —— 纯逻辑渲染版 (中英双语完美版)
+ * color-phone-preview.js —— 纯逻辑渲染版 (完美对齐 + 抽屉式衍生色)
  * ============================================================ */
 (function (global) {
   'use strict';
@@ -7,18 +7,94 @@
   var C = global.CO_Color;
   var N = global.CO_Names;
 
-  var isBound = false;
-  function bindEvents() {
-    if (isBound) return;
+  // 注入抽屉卡片的专属样式
+  function injectStyles() {
+    if (document.getElementById('cp-stack-styles')) return;
+    var style = document.createElement('style');
+    style.id = 'cp-stack-styles';
+    style.textContent = `
+      .cp-cards-stack {
+        position: absolute;
+        top: 200px; /* 与左侧卡片顶端严格对齐 */
+        left: 0;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        z-index: 10;
+        pointer-events: none;
+      }
+      .cp-main-card-wrapper {
+        width: 180px;
+        height: 180px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        margin-bottom: 30px; /* 与下方色卡至少 30px 间距 */
+        flex-shrink: 0;
+      }
+      /* 让内部真正的卡片撑满容器 */
+      .cp-main-card-wrapper .card-wrapper {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+      }
+      .cp-drawer-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 240px;
+      }
+      .cp-drawer {
+        width: 100%;
+        height: 46px;
+        border-radius: 12px;
+        padding: 0 16px;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: inset 0 1px 3px rgba(255,255,255,0.2), 0 4px 10px rgba(0,0,0,0.1);
+        position: relative;
+        overflow: hidden;
+      }
+      /* 左侧拟物高光 */
+      .cp-drawer::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; bottom: 0;
+        width: 6px;
+        background: rgba(255,255,255,0.3);
+      }
+      .cp-drawer-title {
+        font-family: "Noto Serif SC", serif;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .cp-drawer-hex {
+        font-family: "Inter", -apple-system, sans-serif;
+        font-size: 11px;
+        opacity: 0.8;
+        letter-spacing: 0.5px;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // 👇 直接移除左右两个刷新按钮
+  function removeRandomButtons() {
     var btnLeft = document.getElementById('cp-btn-left-random');
     var btnRight = document.getElementById('cp-btn-random');
-    var rand = document.getElementById('rand');
-
-    if (rand) {
-      if (btnLeft) btnLeft.addEventListener('click', function() { rand.click(); });
-      if (btnRight) btnRight.addEventListener('click', function() { rand.click(); });
-      isBound = true;
-    }
+    if (btnLeft && btnLeft.parentNode) btnLeft.parentNode.removeChild(btnLeft);
+    if (btnRight && btnRight.parentNode) btnRight.parentNode.removeChild(btnRight);
+    injectStyles();
+  }
+  
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', removeRandomButtons);
+  } else {
+    removeRandomButtons();
   }
 
   function render(colors, ruleColors, ruleName, libVal) {
@@ -27,15 +103,12 @@
       var boxR = document.getElementById('co-phone-right');
       if (!boxL || !boxR) return; 
 
-      bindEvents();
-
       if (!libVal) {
         var libEl = document.querySelector('input[name="lib"]:checked');
         libVal = libEl ? libEl.value : 'none';
       }
       ruleName = ruleName || 'comp';
 
-      // 👇 获取当前语言并同步手机外部的标签文字
       var isEn = global.CO_I18N && global.CO_I18N.getLang() === 'en';
       var labelL = document.querySelectorAll('.co-phone-label')[0];
       if (labelL) labelL.textContent = isEn ? 'Default Palette' : '默认配色';
@@ -50,7 +123,6 @@
       }
       function getRgbStr(c) { return c.r + '/' + c.g + '/' + c.b; }
 
-      // 👇 多语言字典映射
       var libTitleMap = isEn 
         ? { 'morandi': 'Morandi', 'cn': 'Chinese', 'jp': 'Japanese', 'cyber': 'Cyberpunk', 'none': 'Unlimited' }
         : { 'morandi': '莫兰迪', 'cn': '中式', 'jp': '日式', 'cyber': '赛博', 'none': '无限制' };
@@ -67,7 +139,6 @@
       var ruleTitle = ruleTitleMap[ruleName] || (isEn ? 'Complementary' : '互补');
       var subtitleText = subtitleMap[libVal] || (isEn ? 'Misc Colors' : '综合配色');
 
-      // 👇 动态拼接中英文标题
       var titleLeft = isEn ? (libTitle + ' Palette') : (libTitle + '配色');
       var titleRight = isEn ? (libTitle + ' ' + ruleTitle) : (libTitle + ruleTitle + '色');
       
@@ -77,7 +148,6 @@
       var pLeft = isEn ? titleLeft.toUpperCase() : ((libEnMap[libVal] || 'UNLIMITED') + ' COLOR');
       var pRight = isEn ? titleRight.toUpperCase() : ((libEnMap[libVal] || 'UNLIMITED') + ' ' + (ruleEnMap[ruleName] || 'COLOR'));
 
-      // 👇 中英文分别自适应字号与间距（英文单词太长，必须缩小）
       function getTitleInfo(text, isEn) {
         var len = text.length;
         if (isEn) {
@@ -107,7 +177,6 @@
 
       var now = new Date();
       var timeStr = (now.getHours() < 10 ? '0' + now.getHours() : now.getHours()) + ':' + (now.getMinutes() < 10 ? '0' + now.getMinutes() : now.getMinutes());
-
       var footerText = isEn ? 'WeChat: Jiushu\'s Vision' : '公众号：九叔的视野';
 
       var svgShadow = `
@@ -139,7 +208,6 @@
       var lB = safeColor(colors[1]);
       var isLA_Light = C.luminance(lA) > 0.6;
       var isLB_Light = C.luminance(lB) > 0.6;
-      
       var themeClassL = (isLA_Light && isLB_Light) ? 'cp-theme-light' : 'cp-theme-dark';
 
       boxL.innerHTML = `
@@ -167,7 +235,7 @@
         <div class="cp-footer ${themeClassL}"><span>${footerText}</span></div>
       `;
 
-      // --- 右侧 ---
+      // --- 右侧 (升级版层叠抽屉) ---
       var rMain = safeColor(colors[0]);
       var hexMain = C.rgbToHex(rMain);
       var rCards = [];
@@ -181,14 +249,40 @@
         rCards = [safeColor(colors[0]), safeColor(colors[1])];
       }
       
-      var gridClass = 'cp-grid-' + rCards.length;
       var textR = C.textOn(rMain);
       var themeClassR = (textR === '#111111') ? 'cp-theme-light' : 'cp-theme-dark';
 
-      var cardsRightHtml = rCards.map(function(c) {
-        var hex = C.rgbToHex(c);
-        return `<div class="card-wrapper"><div class="cp-card" style="background:${hex}; color:${C.textOn(c)};"><div class="subtitle">${subtitleText}</div><div class="main-title">${getName(c)}</div><div class="info">RGB:${getRgbStr(c)}<br>${hex}</div></div></div>`;
-      }).join('');
+      var mainCardHtml = '';
+      var drawerCardsHtml = '';
+
+      if (rCards.length > 0) {
+        // 上面：主色的八角，加上 cp-grid-2 完美继承原本的 180x180 和字号
+        var mainC = rCards[0];
+        var mainHex = C.rgbToHex(mainC);
+        mainCardHtml = `
+          <div class="cp-main-card-wrapper cp-grid-2">
+            <div class="card-wrapper">
+              <div class="cp-card" style="background:${mainHex}; color:${C.textOn(mainC)};">
+                <div class="subtitle">${subtitleText}</div>
+                <div class="main-title">${getName(mainC)}</div>
+                <div class="info">RGB:${getRgbStr(mainC)}<br>${mainHex}</div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // 下面：抽屉色卡
+        var drawers = rCards.slice(1);
+        drawerCardsHtml = drawers.map(function(c) {
+          var hex = C.rgbToHex(c);
+          return `
+            <div class="cp-drawer" style="background:${hex}; color:${C.textOn(c)};">
+              <span class="cp-drawer-title">${getName(c)}</span>
+              <span class="cp-drawer-hex">${hex}</span>
+            </div>
+          `;
+        }).join('');
+      }
 
       boxR.innerHTML = `
         <div class="cp-bg">
@@ -207,9 +301,14 @@
           <h1 style="font-size: ${tInfoR.fs}px; letter-spacing: ${tInfoR.ls}px; margin-left: ${tInfoR.ls}px;">${titleRight}</h1>
           <p style="letter-spacing: ${lsRight};">${pRight}</p>
         </div>
-        <div class="cp-cards ${gridClass}">
-          ${cardsRightHtml}
+        
+        <div class="cp-cards-stack">
+          ${mainCardHtml}
+          <div class="cp-drawer-list">
+            ${drawerCardsHtml}
+          </div>
         </div>
+
         <div class="cp-footer ${themeClassR}"><span>${footerText}</span></div>
       `;
 
@@ -219,7 +318,7 @@
   }
 
   // ==========================================
-  // 纯原生 Canvas 绘制（最终完美版：完美复刻字体与间距）
+  // 纯原生 Canvas 绘制（完美匹配新布局与字号）
   // ==========================================
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('.cp-download-btn');
@@ -234,7 +333,6 @@
 
     setTimeout(function () {
       try {
-        // 1. 提取数据与计算动态字号
         var isDark = targetEl.querySelector('.cp-title').classList.contains('cp-theme-dark');
         var bgLeft = targetEl.querySelector('.cp-bg .left').style.backgroundColor || '#6D5DFC';
         var bgRightEl = targetEl.querySelector('.cp-bg .right');
@@ -246,7 +344,6 @@
         var footer = targetEl.querySelector('.cp-footer span').textContent;
         var time = targetEl.querySelector('.cp-status div').textContent;
         
-        // 提取标题的动态内联样式
         var h1Style = window.getComputedStyle(h1El);
         var titleSize = parseFloat(h1Style.fontSize) || 26;
         var titleSpacing = parseFloat(h1Style.letterSpacing) || 6;
@@ -256,17 +353,7 @@
         var pStyle = window.getComputedStyle(pEl);
         var pSpacing = parseFloat(pStyle.letterSpacing) || 2;
 
-        var cards = Array.from(targetEl.querySelectorAll('.cp-card')).map(function (card) {
-          return {
-            bg: card.style.backgroundColor,
-            color: card.style.color,
-            subtitle: card.querySelector('.subtitle').textContent,
-            mainTitle: card.querySelector('.main-title').textContent,
-            info: card.querySelector('.info').innerText.replace(/<br\s*\/?>/gi, '\n')
-          };
-        });
-
-        // 2. 提取树枝 SVG
+        // 提取树枝 SVG
         var svgNode = targetEl.querySelector('.cp-branch-svg');
         var svgStr = svgNode ? new XMLSerializer().serializeToString(svgNode) : '';
         var svgDataUrl = svgStr ? 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr) : null;
@@ -293,7 +380,6 @@
           canvas.height = (phoneH + padding * 2) * scale;
           var ctx = canvas.getContext('2d');
           
-          // 👇 关键：辅助函数，手动实现字间距 (letter-spacing)
           function fillTextWithSpacing(ctx, text, x, y, spacing, align) {
             ctx.textAlign = 'left';
             var totalWidth = 0;
@@ -303,7 +389,7 @@
               widths.push(w);
               totalWidth += w + spacing;
             }
-            totalWidth -= spacing; // 减去最后一个多余间距
+            totalWidth -= spacing;
             
             var currentX = x;
             if (align === 'center') currentX -= totalWidth / 2;
@@ -335,20 +421,19 @@
           ctx.closePath();
           ctx.clip();
 
-          // 画背景与树枝
+          // 背景与树枝
           ctx.fillStyle = bgLeft;
           ctx.fillRect(0, 0, phoneW / 2, phoneH);
           ctx.fillStyle = bgRight;
           ctx.fillRect(phoneW / 2, 0, phoneW / 2, phoneH);
           if (branchImg) ctx.drawImage(branchImg, 0, 0, phoneW * 0.6, phoneH);
 
-          // 状态栏 (无间距，正常画)
+          // 状态栏
           ctx.fillStyle = isDark ? '#FFF' : '#111';
           ctx.font = '600 14px "Inter", -apple-system, sans-serif';
           ctx.textAlign = 'left';
           ctx.fillText(time, 24, 32);
           
-          // 信号与电池 (修复了信号对齐)
           var sigX = phoneW - 64;
           var sigY = 28; 
           ctx.fillStyle = isDark ? '#FFF' : '#111';
@@ -373,7 +458,7 @@
           else ctx.rect((phoneW - 100) / 2, 12, 100, 28);
           ctx.fill();
 
-          // 标题 (完美复刻字体和间距)
+          // 标题
           ctx.fillStyle = isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)';
           ctx.font = '600 ' + titleSize + 'px "Noto Serif SC", "Songti SC", "SimSun", serif';
           fillTextWithSpacing(ctx, titleH1, phoneW / 2 + titleMarginLeft, 120, titleSpacing, 'center');
@@ -382,63 +467,158 @@
           ctx.font = '12px "Inter", -apple-system, sans-serif';
           fillTextWithSpacing(ctx, titleP, phoneW / 2, 148, pSpacing, 'center');
 
-          // 卡片 (👇 关键修复：尺寸由 160 放大至 180，坐标和间距同步精确适配)
-          var cardY = 200;      // 网页上卡片顶部距离约 160+40 = 200
-          var cardW = 180;      // 网页上的宽度是 180px
-          var cardH = 180;      // 网页上的高度是 180px
-          var gap = cards.length > 2 ? 20 : 40;
+          // 八角形路径辅助函数
+          function drawOctagon(x, y, w, h) {
+            var oct = 0.293;
+            ctx.beginPath();
+            ctx.moveTo(x + w * oct, y);
+            ctx.lineTo(x + w * (1 - oct), y);
+            ctx.lineTo(x + w, y + h * oct);
+            ctx.lineTo(x + w, y + h * (1 - oct));
+            ctx.lineTo(x + w * (1 - oct), y + h);
+            ctx.lineTo(x + w * oct, y + h);
+            ctx.lineTo(x, y + h * (1 - oct));
+            ctx.lineTo(x, y + h * oct);
+            ctx.closePath();
+          }
 
-          cards.forEach(function (c) {
-            var cx = (phoneW - cardW) / 2;
-            ctx.save();
+          // 绘制主卡（左侧和右侧主卡共用），修复字号为 30px / 12px
+          function drawMainOctagon(cx, cy, c) {
+            var cardW = 180;
+            var cardH = 180;
             
-            // 八角形路径 (基于 180x180 计算)
-            function drawOctagon(x, y, w, h) {
-              var oct = 0.293;
-              ctx.beginPath();
-              ctx.moveTo(x + w * oct, y);
-              ctx.lineTo(x + w * (1 - oct), y);
-              ctx.lineTo(x + w, y + h * oct);
-              ctx.lineTo(x + w, y + h * (1 - oct));
-              ctx.lineTo(x + w * (1 - oct), y + h);
-              ctx.lineTo(x + w * oct, y + h);
-              ctx.lineTo(x, y + h * (1 - oct));
-              ctx.lineTo(x, y + h * oct);
-              ctx.closePath();
-            }
-
-            drawOctagon(cx, cardY, cardW, cardH);
+            ctx.save();
+            drawOctagon(cx, cy, cardW, cardH);
             ctx.shadowColor = 'rgba(0,0,0,0.15)'; 
             ctx.shadowBlur = 20; 
             ctx.shadowOffsetY = 10; 
             ctx.fillStyle = c.bg;
             ctx.fill();
             
-            // 内圈白线 (内缩 14px)
             ctx.shadowColor = 'transparent';
             ctx.lineWidth = 1.5;
             ctx.strokeStyle = c.color === '#111111' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.4)';
             var inset = 14;
-            drawOctagon(cx + inset, cardY + inset, cardW - inset * 2, cardH - inset * 2);
+            drawOctagon(cx + inset, cy + inset, cardW - inset * 2, cardH - inset * 2);
             ctx.stroke();
             
-            // 卡片文字 (基于 180 高精准居中对齐)
             ctx.fillStyle = c.color;
             
             ctx.font = '12px "Noto Serif SC", serif';
-            fillTextWithSpacing(ctx, c.subtitle, phoneW / 2, cardY + 52, 4, 'center');
+            fillTextWithSpacing(ctx, c.subtitle, cx + cardW / 2, cy + 52, 4, 'center');
             
-            ctx.font = '600 24px "Playfair Display", "Noto Serif SC", serif';
-            fillTextWithSpacing(ctx, c.mainTitle, phoneW / 2, cardY + 94, 6, 'center');
+            // 修复：原 CSS 是 30px，这里必须同步为 30px
+            ctx.font = '600 30px "Playfair Display", "Noto Serif SC", serif';
+            fillTextWithSpacing(ctx, c.mainTitle, cx + cardW / 2, cy + 94, 6, 'center');
             
-            ctx.font = '11px "Inter", -apple-system, sans-serif';
+            // 修复：原 CSS 是 12px，这里必须同步为 12px
+            ctx.font = '12px "Inter", -apple-system, sans-serif';
             var lines = c.info.split('\n');
-            fillTextWithSpacing(ctx, lines[0] || '', phoneW / 2, cardY + 132, 1, 'center');
-            fillTextWithSpacing(ctx, lines[1] || '', phoneW / 2, cardY + 150, 1, 'center');
-
+            fillTextWithSpacing(ctx, lines[0] || '', cx + cardW / 2, cy + 132, 1, 'center');
+            fillTextWithSpacing(ctx, lines[1] || '', cx + cardW / 2, cy + 150, 1, 'center');
             ctx.restore();
-            cardY += cardH + gap;
-          });
+          }
+
+          if (targetId === 'co-phone-left') {
+            // ---------------- 左侧：两个八角卡片 ----------------
+            var cards = Array.from(targetEl.querySelectorAll('.cp-card')).map(function (card) {
+              return {
+                bg: card.style.backgroundColor,
+                color: card.style.color,
+                subtitle: card.querySelector('.subtitle').textContent,
+                mainTitle: card.querySelector('.main-title').textContent,
+                info: card.querySelector('.info').innerText.replace(/<br\s*\/?>/gi, '\n')
+              };
+            });
+
+            var cardY = 200;      
+            var gap = 40;
+
+            cards.forEach(function (c) {
+              var cx = (phoneW - 180) / 2;
+              drawMainOctagon(cx, cardY, c);
+              cardY += 180 + gap;
+            });
+
+          } else {
+            // ---------------- 右侧：主色八角 + 抽屉色卡 ----------------
+            var mainCardEl = targetEl.querySelector('.cp-main-card-wrapper .cp-card');
+            if (mainCardEl) {
+              var mainC = {
+                bg: mainCardEl.style.backgroundColor,
+                color: mainCardEl.style.color,
+                subtitle: mainCardEl.querySelector('.subtitle').textContent,
+                mainTitle: mainCardEl.querySelector('.main-title').textContent,
+                info: mainCardEl.querySelector('.info').innerText.replace(/<br\s*\/?>/gi, '\n')
+              };
+              var cx = (phoneW - 180) / 2;
+              var cy = 200; 
+              
+              drawMainOctagon(cx, cy, mainC);
+            }
+
+            // 画抽屉
+            var drawerEls = Array.from(targetEl.querySelectorAll('.cp-drawer'));
+            var drawerY = 200 + 180 + 30; // 严格留出 30px 空间
+            var drawerW = 240;
+            var drawerH = 46;
+            var drawerGap = 8;
+            
+            drawerEls.forEach(function(drawer) {
+              var bg = drawer.style.backgroundColor;
+              var color = drawer.style.color;
+              var title = drawer.querySelector('.cp-drawer-title').textContent;
+              var hex = drawer.querySelector('.cp-drawer-hex').textContent;
+              
+              var dx = (phoneW - drawerW) / 2;
+              var r = 12;
+              
+              ctx.save();
+              ctx.beginPath();
+              if (ctx.roundRect) {
+                ctx.roundRect(dx, drawerY, drawerW, drawerH, r);
+              } else {
+                ctx.moveTo(dx + r, drawerY);
+                ctx.lineTo(dx + drawerW - r, drawerY);
+                ctx.quadraticCurveTo(dx + drawerW, drawerY, dx + drawerW, drawerY + r);
+                ctx.lineTo(dx + drawerW, drawerY + drawerH - r);
+                ctx.quadraticCurveTo(dx + drawerW, drawerY + drawerH, dx + drawerW - r, drawerY + drawerH);
+                ctx.lineTo(dx + r, drawerY + drawerH);
+                ctx.quadraticCurveTo(dx, drawerY + drawerH, dx, drawerY + drawerH - r);
+                ctx.lineTo(dx, drawerY + r);
+                ctx.quadraticCurveTo(dx, drawerY, dx + r, drawerY);
+              }
+              ctx.closePath();
+              
+              ctx.fillStyle = bg;
+              ctx.shadowColor = 'rgba(0,0,0,0.15)';
+              ctx.shadowBlur = 10;
+              ctx.shadowOffsetY = 4;
+              ctx.fill();
+              
+              // 左边高光层
+              ctx.shadowColor = 'transparent';
+              ctx.save();
+              ctx.clip();
+              ctx.fillStyle = 'rgba(255,255,255,0.25)';
+              ctx.fillRect(dx, drawerY, 6, drawerH);
+              ctx.restore();
+              
+              // 文案
+              ctx.fillStyle = color;
+              ctx.font = '600 15px "Noto Serif SC", serif';
+              ctx.textAlign = 'left';
+              ctx.fillText(title, dx + 20, drawerY + 28);
+              
+              ctx.font = '11px "Inter", -apple-system, sans-serif';
+              ctx.textAlign = 'right';
+              ctx.fillText(hex, dx + drawerW - 20, drawerY + 28);
+              
+              ctx.restore();
+              
+              drawerY += drawerH + drawerGap;
+            });
+          }
 
           // 底部文字
           ctx.fillStyle = isDark ? '#FFF' : '#111';
@@ -447,7 +627,7 @@
 
           ctx.restore(); // 结束裁剪
 
-          // 画外圈黑边
+          // 外圈黑边
           ctx.lineWidth = 10;
           ctx.strokeStyle = '#111';
           ctx.beginPath();
@@ -455,7 +635,7 @@
           else ctx.rect(-5, -5, phoneW + 10, phoneH + 10);
           ctx.stroke();
 
-          // 触发下载
+          // 下载
           var a = document.createElement('a');
           a.href = canvas.toDataURL('image/png');
           a.download = targetId === 'co-phone-left' ? '默认配色.png' : '衍生配色.png';
@@ -463,7 +643,6 @@
           
           btn.textContent = originalText;
           
-          // 弹出操作成功提示
           if (global.CO_Util && typeof global.CO_Util.toast === 'function') {
             var isEn = global.CO_I18N && global.CO_I18N.getLang() === 'en';
             global.CO_Util.toast(isEn ? 'Image saved' : '截图已保存', 'ok');
