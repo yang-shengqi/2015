@@ -1,0 +1,159 @@
+/* ============================================================
+ * color-sticky-controls.css —— 控制行底部悬浮条
+ * 参考顶部导航条：胶囊形、拟物凹陷底、内容整体居中、宽度自适应
+ * ============================================================ */
+
+.co-sticky-bar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(30px + env(safe-area-inset-bottom, 0px));
+  z-index: 900;
+  box-sizing: border-box;
+
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 20px 40px;
+
+  border-radius: 999px;
+  background: var(--nm-bg, #e0e5ec);
+  box-shadow: var(--nm-out);
+
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate(-50%, 18px);
+  transition:
+    opacity .28s cubic-bezier(.22, .61, .36, 1),
+    transform .28s cubic-bezier(.22, .61, .36, 1),
+    visibility .28s;
+  will-change: opacity, transform;
+}
+
+.co-sticky-bar.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+
+/* ---------- 内容：单行居中 ---------- */
+.co-sticky-bar .co-controls {
+  width: 100%;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 0;
+}
+.co-sticky-bar .co-controls::-webkit-scrollbar { display: none; }
+
+/* 去掉所有小标题（主色 / 配色规则 / 色库限制 / 空占位） */
+.co-sticky-bar .co-field > span { display: none; }
+
+.co-sticky-bar .co-field {
+  gap: 0;
+  flex-shrink: 0;
+}
+
+/* ---------- 控件缩小 ---------- */
+.co-sticky-bar .co-picker {
+  height: 30px;
+  padding: 3px;
+}
+.co-sticky-bar .co-picker input[type="color"] {
+  width: 24px;
+  height: 24px;
+}
+.co-sticky-bar .co-picker input[type="text"] {
+  width: 76px;
+  padding: 0 8px;
+  font-size: 11.5px;
+}
+
+.co-sticky-bar .co-seg {
+  padding: 3px;
+  flex-wrap: nowrap;
+}
+.co-sticky-bar .co-seg span {
+  height: 24px;
+  padding: 0 10px;
+  font-size: 11.5px;
+}
+
+.co-sticky-bar .btn-pill {
+  height: 30px;
+  padding: 0 16px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* ---------- 色库气泡（克隆后 id 被移除，改用 .co-libs） ---------- */
+.co-sticky-bar .co-libs { overflow: visible; }
+.co-sticky-bar .co-libs label { position: relative; }
+
+.co-sticky-bar .co-libs label::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: var(--nm-bg);
+  color: var(--nm-text-2);
+  font-size: 11px;
+  font-family: var(--nm-font);
+  font-weight: 400;
+  padding: 6px 10px;
+  border-radius: var(--nm-r-sm);
+  box-shadow: var(--nm-out-sm);
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .2s ease, transform .2s ease, visibility .2s;
+  z-index: 10000;
+  letter-spacing: 0;
+}
+.co-sticky-bar .co-libs label:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* 悬浮条内的取色面板向上弹出 */
+.co-sticky-bar .co-cp-panel {
+  top: auto;
+  bottom: calc(100% + 14px); /* 向上偏移，与悬浮条拉开距离 */
+  left: 0;
+  z-index: 10000;
+  box-shadow: var(--nm-out);
+}
+
+/* 小屏允许换行，防止内容过宽被裁切 */
+@media (max-width: 900px) {
+  .co-sticky-bar .co-controls {
+    flex-wrap: wrap;
+  }
+}
+
+/* ---------- 小屏 ---------- */
+@media (max-width: 900px) {
+  .co-sticky-bar {
+    padding: 7px 10px;
+    max-width: calc(100vw - 20px);
+  }
+  .co-sticky-bar .co-controls { gap: 8px; }
+  .co-sticky-bar .co-seg span {
+    height: 22px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+  .co-sticky-bar .btn-pill {
+    height: 28px;
+    padding: 0 13px;
+    font-size: 11.5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .co-sticky-bar { transition: none; }
+}
