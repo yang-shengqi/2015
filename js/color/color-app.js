@@ -261,10 +261,54 @@
     R.renderRuleCssCode(state.ruleColors, result.cssRuleNames || state.ruleNames);
     
     R.renderContrast(state.genColors, state.ruleColors);
-    R.renderToneScale(state.mainRgb);
+    // 🔥 核心：强制首屏色条读取第一行中间的主色（也就是全局同步后的主色）
+    if (state.genColors && state.genColors.length >= 3) {
+        R.renderToneScale(state.genColors[2]); 
+    } else {
+        R.renderToneScale(state.mainRgb);
+    }
 
-    var mainHex = rgbToHex(state.mainRgb);
-    if (document.querySelector('.co-root')) document.querySelector('.co-root').style.setProperty('--co-accent', mainHex);
+    // 🔥🔥🔥 终极同步：强制让左上角、第一行中间、第二行第一个，全部统一！
+    if (state.genColors && state.genColors.length >= 3) {
+        // 1. 死抓第一行中间那个真实的颜色（不管是人工选的莫兰迪，还是瞎算的）
+        var finalMainRgb = state.genColors[2]; 
+        
+        // 2. 强制覆盖全局主色
+        state.mainRgb = finalMainRgb; 
+        
+        var finalHex = rgbToHex(finalMainRgb);
+        
+        // 3. 强行修改左上角的框
+        if ($('ci')) $('ci').value = finalHex.toLowerCase(); 
+        if ($('ti')) $('ti').value = finalHex.toUpperCase(); 
+        
+        // 4. 强行让第二行第一个卡，也绝对等于这个颜色
+        if (state.ruleColors && state.ruleColors.length > 0) {
+            state.ruleColors[0] = finalMainRgb;
+        }
+
+        // 5. 更新UI的CSS变量
+        if (document.querySelector('.co-root')) {
+            document.querySelector('.co-root').style.setProperty('--co-accent', finalHex);
+        }
+    }
+    // 🔥 终极联动：把第一行中间的颜色，强行同步给首屏那个渐变条！
+    if (state.genColors && state.genColors.length >= 3) {
+        var finalMainColor = state.genColors[2];
+        
+        // 重新生成首屏的渐变色标，全部基于最新的主色！
+        state.gradientStops = [
+            { hex: rgbToHex(C.pushLight(finalMainColor, 0.9)), pos: 0 },
+            { hex: rgbToHex(finalMainColor), pos: 50 },
+            { hex: rgbToHex(C.pushDark(finalMainColor, 0.2)), pos: 100 }
+        ];
+        
+        // 触发重新渲染首屏渐变条
+        if (grad) {
+            grad.renderStops();
+            grad.update();
+        }
+    }
 
     // 👇 把 libVal 传过去
     if (window.CO_PhonePreview) {

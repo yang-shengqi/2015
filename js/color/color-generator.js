@@ -1,5 +1,5 @@
 /* ============================================================ 
- * color-generator.js —— 纯净全适配版（无粘连版）
+ * color-generator.js —— 纯净全适配版（终极联动修复版）
  * ============================================================ */
 (function (global) {
   'use strict';
@@ -18,39 +18,27 @@
 
   function generateTints(baseRgb) {
     var b = C.rgbToOklch(baseRgb);
-    var steps = [80, 60, 50, 40, 20];
-    return steps.map(function(pct) {
-      var L, Cc;
-      if (pct > 50) {
-        var t = (pct - 50) / 50;
-        L = b.L + (0.95 - b.L) * t;
-        Cc = b.C * (1 - t * 0.8);
-      } else if (pct < 50) {
-        var t = (50 - pct) / 50;
-        L = b.L - (b.L - 0.15) * t;
-        Cc = b.C * (1 - t * 0.2);
-      } else {
-        L = b.L; Cc = b.C;
-      }
-      return C.oklchToRgb({ L: L, C: Cc, h: b.h });
+    var baseC = b.C;
+    var baseH = b.h;
+    var baseL = b.L;
+
+    // 动态计算，保证视觉舒服，且不会彻底变黑
+    return [
+      { L: Math.min(baseL + 0.35, 0.95), C: baseC * 0.3, h: baseH },  // 90% 附近
+      { L: Math.min(baseL + 0.15, 0.85), C: baseC * 0.6, h: baseH },  // 70% 附近
+      { L: baseL, C: baseC, h: baseH },                               // 主色
+      { L: Math.max(baseL - 0.15, 0.25), C: baseC * 0.8, h: baseH },  // 30% 附近
+      { L: Math.max(baseL - 0.35, 0.15), C: baseC * 0.5, h: baseH }   // 10% 附近
+    ].map(function(o) {
+      return C.oklchToRgb(o);
     });
   }
 
   function generateRows(state, palette, ruleName) {
     var baseColorsRgb = [];
-    var mainRgbForRule = state.mainRgb;
-    
     var realTotalPixels = 1;
     if (state.hasImage && state.extracted && state.extracted.total) {
       realTotalPixels = state.extracted.total;
-    }
-
-    if (state.hasImage && state.baseImageColors && state.baseImageColors.length > 0) {
-      baseColorsRgb = state.baseImageColors.map(function(c) { return hexToRgb(c.hex); });
-      if (baseColorsRgb.length > 0) mainRgbForRule = baseColorsRgb[0];
-    } else {
-      baseColorsRgb = generateTints(state.mainRgb); 
-      mainRgbForRule = state.mainRgb;
     }
 
     var genColors = [], genNames = [];
@@ -73,24 +61,58 @@
     };
 
     // ==========================================
-    // 渲染第一层（真实占比 vs 明度阶梯）
+    // 👇 1. 定死全局主色（有库匹配库，无库用原色）
+    // ==========================================
+    var rawMainColor = state.mainRgb;
+    if (state.hasImage && state.baseImageColors && state.baseImageColors.length > 0) {
+      rawMainColor = hexToRgb(state.baseImageColors[0].hex);
+    }
+
+    var mainBaseColor = rawMainColor;
+    if (palette && palette.length > 0) {
+        var mainMatch = matchColorInPalette(rawMainColor, palette, null);
+        if (mainMatch && mainMatch.name !== t('noStandardName') && mainMatch.name !== '未知') {
+            mainBaseColor = mainMatch.rgb; 
+        } else {
+            mainBaseColor = palette[0].rgb;
+        }
+    }
+
+    // ==========================================
+    // 👇 2. 准备第一行色卡
+    // ==========================================
+    if (state.hasImage && state.baseImageColors && state.baseImageColors.length > 0) {
+      baseColorsRgb = state.baseImageColors.map(function(c) { return hexToRgb(c.hex); });
+      baseColorsRgb[0] = mainBaseColor; 
+      if (baseColorsRgb.length >= 3) baseColorsRgb[2] = mainBaseColor; 
+    } else {
+      baseColorsRgb = generateTints(mainBaseColor); 
+      if (baseColorsRgb.length >= 3) baseColorsRgb[2] = mainBaseColor; 
+    }
+
+    // ==========================================
+    // 👇 3. 渲染第一层
     // ==========================================
     baseColorsRgb.forEach(function(rgb, idx) {
       var finalRgb = rgb; 
-      if (idx === 2 && !state.hasImage) finalRgb = state.mainRgb;
+      // 🔥 删除了强制改回 state.mainRgb 的烂代码，死死绑定库里的颜色
+      
+      var finalName = t('noStandardName');
+
+      if (palette && palette.length > 0) {
+          var match = matchColorInPalette(finalRgb, namePool, usedNames);
+          if (match && match.name !== t('noStandardName') && match.name !== '未知') {
+            finalName = match.name;
+            if (match.isDuplicate || parseFloat(match.similarity) < 100) {
+               finalName += ' (' + match.similarity + ')';
+            }
+            usedNames.add(match.name); 
+          }
+      } else {
+          finalName = t('noStandardName');
+      }
       
       genColors.push(finalRgb);
-      
-      var match = matchColorInPalette(finalRgb, namePool, usedNames);
-      var finalName = t('noStandardName');
-      
-      if (match && match.name !== t('noStandardName') && match.name !== '未知') {
-        finalName = match.name;
-        if (match.isDuplicate) {
-           finalName += ' (' + match.similarity + ')';
-        }
-        usedNames.add(match.name); 
-      }
       
       var labelText = '';
       var hueStr = Math.round(C.rgbToOklch(finalRgb).h) || 0;
@@ -106,14 +128,14 @@
           labelText = t('secondaryPct') + pctStr;
         }
       } else {
-        var fixedLabels = [
-          t('labelPct80'), 
-          t('labelPct60'), 
-          t('labelPrimary'), 
-          t('labelPct40'), 
-          t('labelPct20')
-        ];
-        labelText = fixedLabels[idx] || '';
+        var displayL = Math.round(C.rgbToOklch(finalRgb).L * 100);
+        
+        if (idx === 2) {
+            labelText = t('labelPrimary') + displayL + '%';
+        } else {
+            labelText = t('labelMetric') + displayL + '%';
+        }
+        
         if (labelText) labelText += ' ( ' + t('actualHue') + ' ' + hueStr + '° )';
       }
       
@@ -122,25 +144,54 @@
     });
 
     // ==========================================
-    // 渲染第二层（衍生色卡 & 灰度）
+    // 👇 4. 渲染第二层（绑定第一行中间的主色）
     // ==========================================
-    var ruleGenerated = H.generateColors(mainRgbForRule, ruleName); 
-    
+    var trueMainColor = genColors[2]; 
+    var baseOklch = C.rgbToOklch(trueMainColor);
+    var generatedColors = [];
     var monoPcts = [98, 75, 50, 30, 5];
 
-    ruleGenerated.forEach(function(ruleRgb, index) {
+    if (ruleName === 'mono') {
+        generatedColors = monoPcts.map(function(pct) {
+            var L = C.clamp(baseOklch.L + (50 - pct) / 100, 0.05, 0.95);
+            return C.oklchToRgb({ L: L, C: 0, h: baseOklch.h });
+        });
+    } else {
+        var offsets = [];
+        if (ruleName === 'comp') offsets = [0, 180];
+        else if (ruleName === 'analog') offsets = [0, 30];
+        else if (ruleName === 'triad') offsets = [0, 120, 240];
+        else if (ruleName === 'split') offsets = [0, 150, 210];
+        else if (ruleName === 'square') offsets = [0, 90, 180, 270];
+        
+        generatedColors = offsets.map(function(offset) {
+            var newHue = (baseOklch.h + offset + 360) % 360;
+            return C.oklchToRgb({ L: baseOklch.L, C: baseOklch.C, h: newHue });
+        });
+    }
+
+    if (ruleName !== 'mono') {
+        generatedColors[0] = trueMainColor; 
+    }
+
+    generatedColors.forEach(function(ruleRgb, index) {
       var finalRgb = ruleRgb; 
       var finalName = t('noStandardName');
       
       var isMain = (ruleName === 'mono' && index === 2) || (ruleName !== 'mono' && index === 0);
 
-      var matchObj = matchColorInPalette(finalRgb, namePool, isMain ? null : usedNames);
-      if (matchObj && matchObj.name !== t('noStandardName') && matchObj.name !== '未知') {
-        finalName = matchObj.name;
-        if (matchObj.isDuplicate) {
-           finalName += ' (' + matchObj.similarity + ')';
-        }
-        if (!isMain) usedNames.add(matchObj.name);
+      // 🔥 再次加上色库拦截，无限制不给名字！
+      if (palette && palette.length > 0) {
+          var matchObj = matchColorInPalette(finalRgb, namePool, usedNames);
+          if (matchObj && matchObj.name !== t('noStandardName') && matchObj.name !== '未知') {
+            finalName = matchObj.name;
+            if (matchObj.isDuplicate || parseFloat(matchObj.similarity) < 100) {
+               finalName += ' (' + matchObj.similarity + ')';
+            }
+            usedNames.add(matchObj.name);
+          }
+      } else {
+          finalName = t('noStandardName');
       }
 
       var currentHue = Math.round(C.rgbToOklch(finalRgb).h) || 0;
@@ -162,8 +213,6 @@
             else if (index === 2) offsetStr = '+180°';
             else if (index === 3) offsetStr = '+270°';
           }
-          
-          // 中英文冒号由词典提供
           labelPrefix = ruleShortMap[ruleName] + t('ruleColon') + offsetStr + ' ( ' + t('actualHue') + ' ' + currentHue + '° )';
         }
       }

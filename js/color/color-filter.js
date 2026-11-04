@@ -51,7 +51,7 @@
       }
     }
 
-    return { rgb: match.rgb, name: finalName, similarity: simStr, isDuplicate: false };
+    return { rgb: match.rgb, name: finalName, similarity: simStr, isDuplicate: (similarity < 100) };
   }
 
   function findBest(lab, srcHsl, palette, maxDiff, colorThreshold, maxLDiff) {

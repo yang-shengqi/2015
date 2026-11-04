@@ -136,8 +136,13 @@
         if (!htmlStr) return '无';
         var parts = htmlStr.split('<br>');
         if (parts.length > 1) {
-          // 原样提取，保留 (84.1%) 这种相似度后缀
-          return parts[1].split(' - ')[0].trim();
+          // 🔥 强行去重：只取名字，直接把后面的相似度百分比和色库名全部砍掉！
+          var rawName = parts[1].trim();
+          // 把类似 " (91.8%)" 这种括号和里面的百分号干掉
+          rawName = rawName.replace(/\s*\([^)]+\)/g, '');
+          // 把后面的 " - 莫兰迪色库" 干掉
+          rawName = rawName.split(' - ')[0].trim();
+          return rawName;
         }
         return '无';
       }

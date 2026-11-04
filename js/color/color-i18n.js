@@ -18,7 +18,7 @@
       'navNavPhone': '手机预览',
       'navNavPreview': '界面预览',
       'navNavGrad': '渐变生成',
-      'navNavWeb': '网页配色',
+      'navNavWeb': '网页配色','labelMetric': '明度：',
 
       // ==================== 首屏与上传 ====================
       'heroEyebrow': 'intelligent color analysis', 'heroTitleA': '从一张图，', 'heroTitleB': '看见完整的色彩语言', 'heroLedeA': '取色、配色、转换、检测，一站完成。', 'heroLedeB': '基于国际标准的 OKLCH 色彩空间与 WCAG 2.2 规范，精准提取画面主色，生成专业级色板与无障碍配色报告。',
@@ -102,7 +102,7 @@
       'navNavPhone': 'Phone Preview',
       'navNavPreview': 'UI Preview',
       'navNavGrad': 'Gradient',
-      'navNavWeb': 'Web Palette',
+      'navNavWeb': 'Web Palette','labelMetric': 'Lightness: ',
 
       // ==================== 首屏与上传 ====================
       'heroEyebrow': 'intelligent color analysis', 'heroTitleA': 'From one image, ', 'heroTitleB': 'see the full language of color', 'heroLedeA': 'Extract, harmonize, convert and audit — all in one place.', 'heroLedeB': 'Built on the OKLCH color space and WCAG 2.2 standards, pull dominant colors and generate professional, accessible palettes.',
