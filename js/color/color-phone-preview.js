@@ -1,5 +1,5 @@
 /* ============================================================
- * color-phone-preview.js —— 纯逻辑渲染版 (动态字号防溢出)
+ * color-phone-preview.js —— 纯逻辑渲染版 (导出修复最终版)
  * ============================================================ */
 (function (global) {
   'use strict';
@@ -95,16 +95,15 @@
     removeRandomButtons();
   }
 
-  // 👇 动态字号计算：字越多，字号和字间距越小，绝对不超出八角白线
   function getCardTitleStyle(text) {
     if (!text) return { fs: 30, ls: 6 };
     var len = text.length;
-    if (len <= 2) return { fs: 30, ls: 6 };   // 如："灰蓝"
-    if (len === 3) return { fs: 26, ls: 4 };  // 如："海天蓝"
-    if (len === 4) return { fs: 22, ls: 3 };  // 如："无标准名"
-    if (len <= 7) return { fs: 18, ls: 2 };   // 如："无标准名称" 或 "灰蓝 (84%)"
-    if (len <= 10) return { fs: 15, ls: 1 };  // 如："灰蓝 (84.1%)"
-    return { fs: 12, ls: 0 };                 // 兜底
+    if (len <= 2) return { fs: 30, ls: 6 };
+    if (len === 3) return { fs: 26, ls: 4 };
+    if (len === 4) return { fs: 22, ls: 3 };
+    if (len <= 7) return { fs: 18, ls: 2 };
+    if (len <= 10) return { fs: 15, ls: 1 };
+    return { fs: 12, ls: 0 };
   }
 
   function render(colors, ruleColors, ruleName, libVal) {
@@ -127,7 +126,6 @@
 
       function safeColor(c) { return c || { r: 163, g: 196, b: 178 }; }
       
-      // 👇 直接从全局 state 读取页面已经算好的名字，绝不重新查库
       var state = global.__co_state || {};
       var genNames = state.genNames || [];
       var ruleNames = state.ruleNames || [];
@@ -136,11 +134,8 @@
         if (!htmlStr) return '无';
         var parts = htmlStr.split('<br>');
         if (parts.length > 1) {
-          // 🔥 强行去重：只取名字，直接把后面的相似度百分比和色库名全部砍掉！
           var rawName = parts[1].trim();
-          // 把类似 " (91.8%)" 这种括号和里面的百分号干掉
           rawName = rawName.replace(/\s*\([^)]+\)/g, '');
-          // 把后面的 " - 莫兰迪色库" 干掉
           rawName = rawName.split(' - ')[0].trim();
           return rawName;
         }
@@ -149,17 +144,9 @@
 
       function getRgbStr(c) { return c.r + '/' + c.g + '/' + c.b; }
 
-      var libTitleMap = isEn 
-        ? { 'morandi': 'Morandi', 'cn': 'Chinese', 'jp': 'Japanese', 'cyber': 'Cyberpunk', 'none': 'Unlimited' }
-        : { 'morandi': '莫兰迪', 'cn': '中式', 'jp': '日式', 'cyber': '赛博', 'none': '无限制' };
-      
-      var ruleTitleMap = isEn
-        ? { 'comp': 'Complementary', 'analog': 'Analogous', 'triad': 'Triadic', 'split': 'Split', 'square': 'Square', 'mono': 'Mono' }
-        : { 'comp': '互补', 'analog': '类似', 'triad': '三角', 'split': '分裂互补', 'square': '四方', 'mono': '灰度' };
-      
-      var subtitleMap = isEn
-        ? { 'morandi': 'Morandi Color', 'cn': 'Chinese Traditional', 'jp': 'Japanese Traditional', 'cyber': 'Cyberpunk', 'none': 'Misc Colors' }
-        : { 'morandi': '莫兰迪色', 'cn': '中式传统色', 'jp': '日式传统色', 'cyber': '赛博朋克色', 'none': '综合配色' };
+      var libTitleMap = isEn ? { 'morandi': 'Morandi', 'cn': 'Chinese', 'jp': 'Japanese', 'cyber': 'Cyberpunk', 'none': 'Unlimited' } : { 'morandi': '莫兰迪', 'cn': '中式', 'jp': '日式', 'cyber': '赛博', 'none': '无限制' };
+      var ruleTitleMap = isEn ? { 'comp': 'Complementary', 'analog': 'Analogous', 'triad': 'Triadic', 'split': 'Split', 'square': 'Square', 'mono': 'Mono' } : { 'comp': '互补', 'analog': '类似', 'triad': '三角', 'split': '分裂互补', 'square': '四方', 'mono': '灰度' };
+      var subtitleMap = isEn ? { 'morandi': 'Morandi Color', 'cn': 'Chinese Traditional', 'jp': 'Japanese Traditional', 'cyber': 'Cyberpunk', 'none': 'Misc Colors' } : { 'morandi': '莫兰迪色', 'cn': '中式传统色', 'jp': '日式传统色', 'cyber': '赛博朋克色', 'none': '综合配色' };
 
       var libTitle = libTitleMap[libVal] || (isEn ? 'Unlimited' : '无限制');
       var ruleTitle = ruleTitleMap[ruleName] || (isEn ? 'Complementary' : '互补');
@@ -206,15 +193,17 @@
       var footerText = isEn ? 'WeChat: Jiushu\'s Vision' : '公众号：九叔的视野';
 
       var svgShadow = `
-        <svg class="cp-branch-svg" viewBox="0 0 250 932" preserveAspectRatio="xMinYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <svg class="cp-branch-svg" viewBox="0 0 250 932" preserveAspectRatio="xMinYMid slice" xmlns="http://www.w3.org/2000/svg" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index: 99;">
           <defs>
             <filter id="shadowBlur"><feGaussianBlur stdDeviation="3" /></filter>
             <linearGradient id="fadeOut" x1="0%" y1="100%" x2="0%" y2="0%">
-              <stop offset="0%" stop-color="rgba(0,0,0,0.3)" />
-              <stop offset="70%" stop-color="rgba(0,0,0,0.1)" />
+              <stop offset="0%" stop-color="rgba(0,0,0,0.4)" />
+              <stop offset="70%" stop-color="rgba(0,0,0,0.15)" />
               <stop offset="100%" stop-color="rgba(0,0,0,0)" />
             </linearGradient>
           </defs>
+          
+          <!-- 1. 左侧主树干 -->
           <g filter="url(#shadowBlur)" fill="url(#fadeOut)" transform="translate(130, 940) rotate(-15) scale(1.6)">
             <path d="M 0 0 C 20 -80 10 -160 30 -240 C 40 -320 10 -400 30 -480 C 40 -520 20 -560 30 -600 L 25 -600 C 15 -560 35 -520 25 -480 C 5 -400 35 -320 25 -240 C 5 -160 15 -80 -5 0 Z" />
             <path d="M 15 -180 C -10 -200 -30 -230 -40 -260 L -35 -262 C -25 -230 -5 -200 18 -185 Z" />
@@ -226,6 +215,23 @@
             <path d="M 80 -380 C 100 -400 130 -420 160 -450 L 164 -446 C 134 -416 104 -396 84 -376 Z" />
             <path d="M 70 -260 C 100 -280 130 -290 160 -310 L 163 -306 C 133 -286 103 -276 74 -256 Z" />
           </g>
+
+          <!-- 2. 右侧倒置的树 -->
+          <g filter="url(#shadowBlur)" fill="url(#fadeOut)" transform="translate(220, 820) rotate(165) scale(0.75)">
+            <path d="M 0 0 C 20 -80 10 -160 30 -240 C 40 -320 10 -400 30 -480 C 40 -520 20 -560 30 -600 L 25 -600 C 15 -560 35 -520 25 -480 C 5 -400 35 -320 25 -240 C 5 -160 15 -80 -5 0 Z" />
+            <path d="M 15 -180 C -10 -200 -30 -230 -40 -260 L -35 -262 C -25 -230 -5 -200 18 -185 Z" />
+            <path d="M 20 -320 C -10 -340 -30 -360 -50 -390 L -45 -393 C -25 -360 -5 -340 23 -325 Z" />
+            <path d="M 25 -220 C 70 -240 120 -260 170 -300 L 175 -295 C 125 -255 70 -235 28 -215 Z" />
+            <path d="M 25 -400 C 80 -420 140 -440 200 -480 L 205 -475 C 145 -435 80 -415 28 -395 Z" />
+            <path d="M 30 -520 C 90 -540 150 -560 210 -590 L 215 -585 C 155 -555 90 -535 32 -515 Z" />
+            <path d="M 28 -580 C 70 -590 110 -600 140 -620 L 145 -615 C 110 -595 70 -585 30 -575 Z" />
+            <path d="M 80 -380 C 100 -400 130 -420 160 -450 L 164 -446 C 134 -416 104 -396 84 -376 Z" />
+            <path d="M 70 -260 C 100 -280 130 -290 160 -310 L 163 -306 C 133 -286 103 -276 74 -256 Z" />
+            <path d="M 35 -580 C 80 -600 130 -630 180 -680 L 185 -675 C 130 -625 85 -595 40 -570 Z" />
+            <path d="M 35 -460 C 90 -470 140 -490 190 -520 L 193 -515 C 140 -485 90 -465 38 -450 Z" />
+            <path d="M 20 -300 C -20 -320 -50 -350 -80 -390 L -75 -393 C -45 -350 -15 -320 23 -305 Z" />
+            <path d="M -5 0 C 10 40 20 80 30 120 L 25 120 C 15 80 5 40 -10 0 Z" />
+          </g>
         </svg>
       `;
 
@@ -235,6 +241,8 @@
       var isLA_Light = C.luminance(lA) > 0.6;
       var isLB_Light = C.luminance(lB) > 0.6;
       var themeClassL = (isLA_Light && isLB_Light) ? 'cp-theme-light' : 'cp-theme-dark';
+
+      var colorStatusL = C.luminance(lA) > 0.5 ? '#111111' : '#FFFFFF';
 
       var nameL1 = extractName(genNames[0]);
       var nameL2 = extractName(genNames[2]);
@@ -247,17 +255,23 @@
           <div class="right" style="background:${C.rgbToHex(lB)};"></div>
         </div>
         ${svgShadow}
-        <div class="cp-status ${themeClassL}">
+        <div class="cp-status" style="color:${colorStatusL};">
           <div>${timeStr}</div>
           <div style="display:flex; align-items:center;">
-             <div class="cp-sig"><i></i><i></i><i></i><i></i></div>
-             <div class="cp-batt"><div class="cp-batt-lv"></div></div>
+             <div class="cp-sig">
+                <i style="background:currentColor;"></i>
+                <i style="background:currentColor;"></i>
+                <i style="background:currentColor;"></i>
+                <i style="background:currentColor;"></i>
+             </div>
+             <div class="cp-batt" style="border-color:currentColor;">
+                <div class="cp-batt-lv" style="background:currentColor;"></div>
+             </div>
           </div>
         </div>
-        <div class="cp-island"></div>
-        <div class="cp-title ${themeClassL}">
-          <h1 style="font-size: ${tInfoL.fs}px; letter-spacing: ${tInfoL.ls}px; margin-left: ${tInfoL.ls}px;">${titleLeft}</h1>
-          <p style="letter-spacing: ${lsLeft};">${pLeft}</p>
+        <div class="cp-title">
+          <h1 style="font-size: ${tInfoL.fs}px; letter-spacing: ${tInfoL.ls}px; margin-left: ${tInfoL.ls}px; color: ${isLA_Light ? '#000000' : '#FFFFFF'};">${titleLeft}</h1>
+          <p style="letter-spacing: ${lsLeft}; color: ${isLA_Light ? '#000000' : '#FFFFFF'}; opacity: 0.7;">${pLeft}</p>
         </div>
         <div class="cp-cards cp-grid-2">
           <div class="card-wrapper"><div class="cp-card" style="background:${C.rgbToHex(lA)}; color:${C.textOn(lA)};"><div class="subtitle">${subtitleText}</div><div class="main-title" style="font-size: ${styleL1.fs}px; letter-spacing: ${styleL1.ls}px; margin-left: ${styleL1.ls}px;">${nameL1}</div><div class="info">RGB:${getRgbStr(lA)}<br>${C.rgbToHex(lA)}</div></div></div>
@@ -285,6 +299,8 @@
       var drawers = rCards.slice(1);
       var textR = C.textOn(rBg);
       var themeClassR = (textR === '#111111') ? 'cp-theme-light' : 'cp-theme-dark';
+
+      var colorStatusR = C.luminance(rBg) > 0.5 ? '#111111' : '#FFFFFF';
 
       var nameR = extractName(genNames[2]);
       var styleR = getCardTitleStyle(nameR);
@@ -317,11 +333,18 @@
           <div class="left" style="background:${hexBg}; width: 100%;"></div>
         </div>
         ${svgShadow}
-        <div class="cp-status ${themeClassR}">
+        <div class="cp-status" style="color:${colorStatusR};">
           <div>${timeStr}</div>
           <div style="display:flex; align-items:center;">
-             <div class="cp-sig"><i></i><i></i><i></i><i></i></div>
-             <div class="cp-batt"><div class="cp-batt-lv"></div></div>
+             <div class="cp-sig">
+                <i style="background:currentColor;"></i>
+                <i style="background:currentColor;"></i>
+                <i style="background:currentColor;"></i>
+                <i style="background:currentColor;"></i>
+             </div>
+             <div class="cp-batt" style="border-color:currentColor;">
+                <div class="cp-batt-lv" style="background:currentColor;"></div>
+             </div>
           </div>
         </div>
         <div class="cp-island"></div>
@@ -361,11 +384,14 @@
 
     setTimeout(function () {
       try {
-        var isDark = targetEl.querySelector('.cp-title').classList.contains('cp-theme-dark');
         var bgLeft = targetEl.querySelector('.cp-bg .left').style.backgroundColor || '#6D5DFC';
         var bgRightEl = targetEl.querySelector('.cp-bg .right');
         var bgRight = bgRightEl ? bgRightEl.style.backgroundColor : bgLeft;
         
+        var bgLeftRgb = C.hexToRgb(bgLeft);
+        var isLeftLight = C.luminance(bgLeftRgb) > 0.5;
+        var isDark = !isLeftLight;
+
         var h1El = targetEl.querySelector('.cp-title h1');
         var titleH1 = h1El.textContent;
         var titleP = targetEl.querySelector('.cp-title p').textContent;
@@ -446,20 +472,37 @@
           ctx.closePath();
           ctx.clip();
 
+          // 1. 填充背景
           ctx.fillStyle = bgLeft;
           ctx.fillRect(0, 0, phoneW / 2, phoneH);
           ctx.fillStyle = bgRight;
           ctx.fillRect(phoneW / 2, 0, phoneW / 2, phoneH);
-          if (branchImg) ctx.drawImage(branchImg, 0, 0, phoneW * 0.6, phoneH);
+          
+          // 2. 绘制左侧大树
+          if (branchImg) {
+            ctx.drawImage(branchImg, 0, 0, phoneW * 0.85, phoneH);
+          }
 
-          ctx.fillStyle = isDark ? '#FFF' : '#111';
+          // 3. 绘制右侧倒影树（完美还原网页效果）
+          if (branchImg) {
+            ctx.save();
+            ctx.translate(phoneW * 0.9, phoneH * 0.95); 
+            ctx.rotate(Math.PI); 
+            ctx.scale(0.7, 0.7);
+            ctx.drawImage(branchImg, -phoneW * 0.65, -phoneH * 0.9, phoneW * 0.85, phoneH);
+            ctx.restore();
+          }
+
+          var canvasTextColor = isLeftLight ? '#111111' : '#FFFFFF';
+
+          ctx.fillStyle = canvasTextColor;
           ctx.font = '600 14px "Inter", -apple-system, sans-serif';
           ctx.textAlign = 'left';
           ctx.fillText(time, 24, 32);
           
           var sigX = phoneW - 64;
           var sigY = 28; 
-          ctx.fillStyle = isDark ? '#FFF' : '#111';
+          ctx.fillStyle = canvasTextColor;
           ctx.fillRect(sigX, sigY - 4, 3, 4);
           ctx.fillRect(sigX + 5, sigY - 6, 3, 6);
           ctx.fillRect(sigX + 10, sigY - 8, 3, 8);
@@ -467,10 +510,10 @@
 
           var batX = phoneW - 38;
           var batY = 18;
-          ctx.strokeStyle = isDark ? '#FFF' : '#111';
+          ctx.strokeStyle = canvasTextColor;
           ctx.lineWidth = 1;
           ctx.strokeRect(batX, batY, 18, 10);
-          ctx.fillStyle = isDark ? '#FFF' : '#111';
+          ctx.fillStyle = canvasTextColor;
           ctx.fillRect(batX + 2, batY + 2, 12, 6);
           ctx.fillRect(batX + 18, batY + 3, 2, 4);
 
@@ -525,7 +568,6 @@
             ctx.font = '12px "Noto Serif SC", serif';
             fillTextWithSpacing(ctx, c.subtitle, cx + cardW / 2, cy + 52, 4, 'center');
             
-            // Canvas 绘制使用同样的动态字号
             var tStyle = getCardTitleStyle(c.mainTitle);
             ctx.font = '600 ' + tStyle.fs + 'px "Playfair Display", "Noto Serif SC", serif';
             fillTextWithSpacing(ctx, c.mainTitle, cx + cardW / 2, cy + 94, tStyle.ls, 'center');
