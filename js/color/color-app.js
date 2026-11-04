@@ -185,7 +185,19 @@
 
     var mainColorName = document.getElementById('mainColorName');
     if (mainColorName) {
-      var palette = getPalette() || window.CO_Names.CN_PALETTE;
+      // 1. 获取当前选中的色库
+      var palette = getPalette();
+      
+      // 2. 如果是“无限制”，就合并四大色库
+      if (!palette) {
+          palette = [];
+          if (window.CO_Names.CN_PALETTE) palette = palette.concat(window.CO_Names.CN_PALETTE);
+          if (window.CO_Names.JP_PALETTE) palette = palette.concat(window.CO_Names.JP_PALETTE);
+          if (window.CO_Names.MORANDI_PALETTE) palette = palette.concat(window.CO_Names.MORANDI_PALETTE);
+          if (window.CO_Names.CYBER_PALETTE) palette = palette.concat(window.CO_Names.CYBER_PALETTE);
+      }
+      
+      // 3. 去全库里找名字
       var match = window.CO_Filter.matchColorInPalette(state.mainRgb, palette, null);
       mainColorName.textContent = match.name;
     }
