@@ -1,116 +1,452 @@
 /* ============================================================
- * color-phone-preview.js —— 完整最终版 (彻底修复左侧文字颜色)
+ * color-phone-preview.js —— 最终定稿版
+ * 纯 Canvas 渲染，绝对固定坐标，预览/导出完全一致，阴影置顶
  * ============================================================ */
 (function (global) {
   'use strict';
 
   var C = global.CO_Color;
 
-  function injectStyles() {
-    if (document.getElementById('cp-stack-styles')) return;
-    var style = document.createElement('style');
-    style.id = 'cp-stack-styles';
-    style.textContent = `
-      .cp-cards-stack {
-        position: absolute;
-        top: 200px;
-        left: 0;
-        width: 100%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        z-index: 10;
-        pointer-events: none;
-      }
-      .cp-main-card-wrapper {
-        width: 180px;
-        height: 180px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        position: relative;
-        margin-bottom: 30px;
-        flex-shrink: 0;
-      }
-      .cp-main-card-wrapper .card-wrapper {
-        width: 100%;
-        height: 100%;
-        margin: 0;
-      }
-      .cp-drawer-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        width: 240px;
-      }
-      .cp-drawer {
-        width: 100%;
-        height: 46px;
-        border-radius: 12px;
-        padding: 0 16px;
-        box-sizing: border-box;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        box-shadow: inset 0 1px 3px rgba(255,255,255,0.2), 0 4px 10px rgba(0,0,0,0.1);
-        position: relative;
-        overflow: hidden;
-      }
-      .cp-drawer::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; bottom: 0;
-        width: 6px;
-        background: rgba(255,255,255,0.3);
-      }
-      .cp-drawer-title {
-        font-family: "Noto Serif SC", serif;
-        font-size: 15px;
-        font-weight: 600;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .cp-drawer-hex {
-        font-family: "Inter", -apple-system, sans-serif;
-        font-size: 11px;
-        opacity: 0.8;
-        letter-spacing: 0.5px;
-      }
-    `;
-    document.head.appendChild(style);
+  // 统一的尺寸与坐标常量（绝不乱算）
+  var L = {
+    W: 320, H: 694,
+    PAD: 40,
+    EXPORT_SCALE: 2,
+    CARD_SIZE: 180,
+    DRAWER_W: 180,
+    DRAWER_H: 46,
+    DRAWER_R: 12
+  };
+
+  var F_SERIF   = '"Noto Serif SC","Songti SC","SimSun",serif';
+  var F_DISPLAY = '"Playfair Display","Noto Serif SC",serif';
+  var F_SANS    = '"Inter",-apple-system,sans-serif';
+
+  /* ================= 1. 绘图工具函数 ================= */
+
+  function roundRectPath(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
   }
 
-  function removeRandomButtons() {
-    var btnLeft = document.getElementById('cp-btn-left-random');
-    var btnRight = document.getElementById('cp-btn-random');
-    if (btnLeft && btnLeft.parentNode) btnLeft.parentNode.removeChild(btnLeft);
-    if (btnRight && btnRight.parentNode) btnRight.parentNode.removeChild(btnRight);
-    injectStyles();
+  function octPath(ctx, x, y, w, h) {
+    var o = 0.293;
+    ctx.beginPath();
+    ctx.moveTo(x + w * o, y);
+    ctx.lineTo(x + w * (1 - o), y);
+    ctx.lineTo(x + w, y + h * o);
+    ctx.lineTo(x + w, y + h * (1 - o));
+    ctx.lineTo(x + w * (1 - o), y + h);
+    ctx.lineTo(x + w * o, y + h);
+    ctx.lineTo(x, y + h * (1 - o));
+    ctx.lineTo(x, y + h * o);
+    ctx.closePath();
   }
-  
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', removeRandomButtons);
-  } else {
-    removeRandomButtons();
+
+  function fillRun(ctx, text, x, y, spacing, align) {
+    if (!text) return;
+    var total = 0, i;
+    for (i = 0; i < text.length; i++) total += ctx.measureText(text[i]).width + spacing;
+    total -= spacing;
+    var cx = x;
+    if (align === 'center') cx -= total / 2;
+    else if (align === 'right') cx -= total;
+    ctx.textAlign = 'left';
+    for (i = 0; i < text.length; i++) {
+      ctx.fillText(text[i], cx, y);
+      cx += ctx.measureText(text[i]).width + spacing;
+    }
   }
 
   function getCardTitleStyle(text) {
-    if (!text) return { fs: 30, ls: 6 };
-    var len = text.length;
-    if (len <= 2) return { fs: 30, ls: 6 };
-    if (len === 3) return { fs: 26, ls: 4 };
-    if (len === 4) return { fs: 22, ls: 3 };
-    if (len <= 7) return { fs: 18, ls: 2 };
-    if (len <= 10) return { fs: 15, ls: 1 };
+    var n = (text || '').length;
+    if (n <= 2) return { fs: 30, ls: 6 };
+    if (n === 3) return { fs: 26, ls: 4 };
+    if (n === 4) return { fs: 22, ls: 3 };
+    if (n <= 7) return { fs: 18, ls: 2 };
+    if (n <= 10) return { fs: 15, ls: 1 };
     return { fs: 12, ls: 0 };
+  }
+
+  function getTitleInfo(text, isEn) {
+    var n = text.length;
+    if (isEn) {
+      if (n <= 14) return { fs: 24, ls: 4 };
+      if (n <= 18) return { fs: 20, ls: 3 };
+      if (n <= 22) return { fs: 18, ls: 2 };
+      return { fs: 16, ls: 1 };
+    }
+    if (n <= 5) return { fs: 30, ls: 12 };
+    if (n === 6) return { fs: 28, ls: 10 };
+    if (n === 7) return { fs: 24, ls: 8 };
+    return { fs: 22, ls: 6 };
+  }
+
+  function getEnSpacing(text) {
+    var n = text.length;
+    if (n <= 12) return 6;
+    if (n <= 16) return 4;
+    if (n <= 20) return 3;
+    return 2;
+  }
+
+  /* ================= 枝影 SVG（彻底消除硬边，纯色+大模糊） ================= */
+  var BRANCH_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 694" preserveAspectRatio="none">' +
+    '<defs>' +
+    // 👇 关键修复：滤镜向外扩张 50%，给模糊留出充足空间
+    '<filter id="treeBlur" x="-50%" y="-50%" width="300%" height="300%">' +
+    '<feGaussianBlur stdDeviation="8" />' + 
+    '</filter>' +
+    '</defs>' +
+
+    // 👇 translate(左右, 上下) 控制移动；rotate(角度, 中心X, 中心Y) 控制旋转
+    // 左右：负数向左，正数向右；上下：负数向上，正数向下；角度：正数顺时针
+    '<g filter="url(#treeBlur)" fill="rgba(0,0,0,0.28)" transform="translate(-20, 0) rotate(10, 450, 400)">' +
+    
+    // ================= 左侧树枝（原封不动） =================
+    '<path d="M -30 720 C 80 500 140 300 220 -20 L 260 -20 C 180 300 120 500 10 720 Z" />' +
+    '<path d="M 90 450 C 40 380 10 300 -20 200 L 0 190 C 30 290 60 370 110 430 Z" />' +
+    '<path d="M 140 300 C 180 250 240 200 280 150 C 220 220 160 270 130 320 Z" />' +
+
+    '<path d="M -20 720 C 80 500 140 300 220 -20 C 120 300 60 500 20 720 Z" />' +
+    '<path d="M 210 50 C 240 20 280 -10 320 -30 L 320 -10 C 280 10 240 40 215 70 Z" />' +
+    '<path d="M 60 600 C 100 580 150 550 190 520 L 195 535 C 150 565 100 595 65 615 Z" />' +
+    '<path d="M -20 -50 C 30 40 60 130 80 200 L 92 198 C 72 130 42 40 -10 -50 Z" transform="translate(0, 100)" />' +
+
+    
+    '</g></svg>';
+
+  var branchImg = null, branchLoaded = false, branchWaiters = [];
+
+  function ensureBranch(cb) {
+    if (branchLoaded) { cb(branchImg); return; }
+    branchWaiters.push(cb);
+    if (branchImg) return;
+    branchImg = new Image();
+    branchImg.onload = function () { branchLoaded = true; flushBranch(); };
+    branchImg.onerror = function () { branchLoaded = true; branchImg = null; flushBranch(); };
+    branchImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(BRANCH_SVG);
+  }
+
+  function flushBranch() {
+    var q = branchWaiters;
+    branchWaiters = [];
+    for (var i = 0; i < q.length; i++) { try { q[i](branchImg); } catch (e) {} }
+  }
+
+  /* ================= 3. 核心绘制组件 ================= */
+
+  function drawStatus(ctx, color, time, island) {
+    var W = L.W;
+    ctx.fillStyle = color;
+    ctx.font = '600 14px ' + F_SANS;
+    ctx.textAlign = 'left';
+    ctx.fillText(time, 24, 32);
+
+    var sx = W - 64, sy = 28;
+    ctx.fillRect(sx, sy - 4, 3, 4);
+    ctx.fillRect(sx + 5, sy - 6, 3, 6);
+    ctx.fillRect(sx + 10, sy - 8, 3, 8);
+    ctx.fillRect(sx + 15, sy - 10, 3, 10);
+
+    var bx = W - 38, by = 18;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx, by, 18, 10);
+    ctx.fillStyle = color;
+    ctx.fillRect(bx + 2, by + 2, 12, 6);
+    ctx.fillRect(bx + 18, by + 3, 2, 4);
+
+    if (island) {
+      ctx.fillStyle = '#000';
+      roundRectPath(ctx, (W - 100) / 2, 12, 100, 28, 14);
+      ctx.fill();
+    }
+  }
+
+  function drawOctagonCard(ctx, x, y, item) {
+    var s = L.CARD_SIZE;
+    ctx.save();
+    octPath(ctx, x, y, s, s);
+    ctx.shadowColor = 'rgba(0,0,0,0.15)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 10;
+    ctx.fillStyle = item.bg;
+    ctx.fill();
+
+    ctx.shadowColor = 'transparent';
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = item.color === '#111111' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.4)';
+    var inset = 14;
+    octPath(ctx, x + inset, y + inset, s - inset * 2, s - inset * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = item.color;
+    ctx.font = '12px ' + F_SERIF;
+    fillRun(ctx, item.subtitle, x + s / 2, y + 52, 4, 'center');
+
+    var t = getCardTitleStyle(item.mainTitle);
+    ctx.font = '600 ' + t.fs + 'px ' + F_DISPLAY;
+    fillRun(ctx, item.mainTitle, x + s / 2, y + 94, t.ls, 'center');
+
+    ctx.font = '12px ' + F_SANS;
+    fillRun(ctx, item.info[0] || '', x + s / 2, y + 132, 1, 'center');
+    fillRun(ctx, item.info[1] || '', x + s / 2, y + 150, 1, 'center');
+    ctx.restore();
+  }
+
+  function drawDrawer(ctx, x, y, item) {
+    var w = L.DRAWER_W, h = L.DRAWER_H;
+    ctx.save();
+    roundRectPath(ctx, x, y, w, h, L.DRAWER_R);
+    ctx.shadowColor = 'rgba(0,0,0,0.15)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 4;
+    ctx.fillStyle = item.bg;
+    ctx.fill();
+
+    ctx.shadowColor = 'transparent';
+    ctx.save();
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(x, y, 6, h);
+    ctx.restore();
+
+    ctx.fillStyle = item.color;
+    ctx.font = '600 15px ' + F_SERIF;
+    ctx.textAlign = 'left';
+    ctx.fillText(item.title, x + 14, y + 28);
+
+    ctx.font = '11px ' + F_SANS;
+    ctx.textAlign = 'right';
+    ctx.fillText(item.hex, x + w - 14, y + 28);
+    ctx.restore();
+  }
+
+  /* ================= 4. 唯一的绘制入口 ================= */
+
+  function drawPhone(ctx, m, branchImg) {
+    var W = L.W, H = L.H;
+
+    ctx.save();
+    roundRectPath(ctx, 0, 0, W, H, 40);
+    ctx.clip();
+
+    // 1. 背景
+    if (m.splitBg) {
+      ctx.fillStyle = m.bgLeft;  ctx.fillRect(0, 0, W / 2, H);
+      ctx.fillStyle = m.bgRight; ctx.fillRect(W / 2, 0, W / 2, H);
+    } else {
+      ctx.fillStyle = m.bgLeft;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // 2. 状态栏
+    drawStatus(ctx, m.statusColor, m.time, m.showIsland);
+
+    // 3. 标题
+    ctx.fillStyle = m.titleColor;
+    ctx.font = '600 ' + m.title.fs + 'px ' + F_DISPLAY;
+    fillRun(ctx, m.title.text, W / 2, 120, m.title.ls, 'center');
+
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = m.subColor;
+    ctx.font = '12px ' + F_SANS;
+    fillRun(ctx, m.sub.text, W / 2, 148, m.sub.ls, 'center');
+    ctx.restore();
+
+    // 4. 卡片（按模型里写死的坐标画）
+    m.items.forEach(function (it) {
+      if (it.type === 'octagon') drawOctagonCard(ctx, it.x, it.y, it);
+      else drawDrawer(ctx, it.x, it.y, it);
+    });
+
+    // 5. 页脚
+    ctx.fillStyle = m.footerColor;
+    ctx.font = '12px ' + F_SANS;
+    fillRun(ctx, m.footerText, W - 20, H - 20, 0, 'right');
+
+    // 6. 枝影（必须在所有卡片/文字之后，即最上层）
+    if (branchImg) {
+      ctx.drawImage(branchImg, 0, 0, W * 0.85, H);
+      ctx.save();
+      ctx.translate(W * 0.9, H * 0.95);
+      ctx.rotate(Math.PI);
+      ctx.scale(0.7, 0.7);
+      ctx.drawImage(branchImg, -W * 0.65, -H * 0.9, W * 0.85, H);
+      ctx.restore();
+    }
+
+    ctx.restore(); // 结束裁剪
+
+    // 7. 最外层黑框
+    ctx.save();
+    ctx.lineWidth = 10;
+    ctx.strokeStyle = '#111';
+    roundRectPath(ctx, -5, -5, W + 10, H + 10, 45);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ================= 5. 构建数据模型（坐标全写死） ================= */
+
+  function extractName(html) {
+    if (!html) return '无';
+    var parts = html.split('<br>');
+    if (parts.length > 1) {
+      return parts[1].trim().replace(/\s*\([^)]+\)/g, '').split(' - ')[0].trim();
+    }
+    return '无';
+  }
+
+  function rgbStr(c) { return c.r + '/' + c.g + '/' + c.b; }
+  function safeColor(c) { return c || { r: 163, g: 196, b: 178 }; }
+
+  function nowTime() {
+    var d = new Date();
+    return (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' +
+           (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
+  }
+
+  function footerColorOf(textColor) {
+    return textColor === '#111111' ? 'rgba(17,17,17,0.7)' : 'rgba(255,255,255,0.7)';
+  }
+
+  function buildLeftModel(colors, genNames, texts) {
+    var a = safeColor(colors[0]);
+    var b = safeColor(colors[2]);
+    var tc = C.textOn(a);
+
+    return {
+      splitBg: true,
+      bgLeft: C.rgbToHex(a),
+      bgRight: C.rgbToHex(b),
+      statusColor: tc,
+      titleColor: tc,
+      subColor: tc,
+      title: { text: texts.titleLeft, fs: texts.tInfoL.fs, ls: texts.tInfoL.ls },
+      sub: { text: texts.pLeft, ls: texts.lsLeft },
+      items: [
+        // 左侧：第 1 个 Y=200，第 2 个 Y=410（间距 30px）
+        { type: 'octagon', x: 70, y: 200, bg: C.rgbToHex(a), color: C.textOn(a), subtitle: texts.subtitle, mainTitle: extractName(genNames[0]), info: ['RGB:' + rgbStr(a), C.rgbToHex(a)] },
+        { type: 'octagon', x: 70, y: 410, bg: C.rgbToHex(b), color: C.textOn(b), subtitle: texts.subtitle, mainTitle: extractName(genNames[2]), info: ['RGB:' + rgbStr(b), C.rgbToHex(b)] }
+      ],
+      footerText: texts.footerText,
+      footerColor: footerColorOf(tc),
+      showIsland: false,
+      time: texts.time
+    };
+  }
+
+  function buildRightModel(colors, ruleColors, ruleNames, genNames, ruleName, texts) {
+    var bg = safeColor(colors[0]);
+    var main = safeColor(colors[2]);
+    var tc = C.textOn(bg);
+    var cards;
+
+    if (ruleColors && ruleColors.length) {
+      if (ruleName === 'square') cards = ruleColors.slice(0, 4).map(safeColor);
+      else if (ruleName === 'triad' || ruleName === 'split') cards = ruleColors.slice(0, 3).map(safeColor);
+      else if (ruleName === 'mono') cards = ruleColors.slice(0, 5).map(safeColor);
+      else cards = ruleColors.slice(0, 2).map(safeColor);
+    } else {
+      cards = [safeColor(colors[0]), safeColor(colors[1])];
+    }
+
+    // 右侧：第 1 个八角 Y=200（左对齐），第 1 个抽屉 Y=400（间距 20px），抽屉间距 15px
+    var items = [{
+      type: 'octagon', x: 70, y: 200,
+      bg: C.rgbToHex(main), color: C.textOn(main),
+      subtitle: texts.subtitle, mainTitle: extractName(genNames[2]),
+      info: ['RGB:' + rgbStr(main), C.rgbToHex(main)]
+    }];
+
+    var startY = 400;
+    cards.slice(1).forEach(function (c, idx) {
+      items.push({
+        type: 'drawer', x: 70, y: startY + idx * (L.DRAWER_H + 15),
+        bg: C.rgbToHex(c), color: C.textOn(c),
+        title: extractName(ruleNames[idx + 1]), hex: C.rgbToHex(c)
+      });
+    });
+
+    return {
+      splitBg: false,
+      bgLeft: C.rgbToHex(bg),
+      bgRight: C.rgbToHex(bg),
+      statusColor: tc,
+      titleColor: tc,
+      subColor: tc,
+      title: { text: texts.titleRight, fs: texts.tInfoR.fs, ls: texts.tInfoR.ls },
+      sub: { text: texts.pRight, ls: texts.lsRight },
+      items: items,
+      footerText: texts.footerText,
+      footerColor: footerColorOf(tc),
+      showIsland: true,
+      time: texts.time
+    };
+  }
+
+  /* ================= 6. 预览挂载 & 导出 ================= */
+
+  var models = { 'co-phone-left': null, 'co-phone-right': null };
+
+  function injectStyles() {
+    if (document.getElementById('cp-canvas-styles')) return;
+    var s = document.createElement('style');
+    s.id = 'cp-canvas-styles';
+    s.textContent =
+      '#co-phone-left,#co-phone-right{position:relative;}' +
+      '#co-phone-left>.cp-canvas,#co-phone-right>.cp-canvas{' +
+      'display:block;width:100%;height:auto;aspect-ratio:' + L.W + '/' + L.H + ';}';
+    document.head.appendChild(s);
+  }
+
+  function mountPreview(id, model) {
+    var box = document.getElementById(id);
+    if (!box) return;
+
+    var canvas = box.querySelector('canvas.cp-canvas');
+    if (!canvas) {
+      box.innerHTML = '';
+      canvas = document.createElement('canvas');
+      canvas.className = 'cp-canvas';
+      box.appendChild(canvas);
+    }
+
+    var dpr = Math.min(global.devicePixelRatio || 1, 3);
+    canvas.width  = Math.round(L.W * dpr);
+    canvas.height = Math.round(L.H * dpr);
+
+    function paint() {
+      var ctx = canvas.getContext('2d');
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.scale(dpr, dpr); // 逻辑坐标始终是 320x694
+      drawPhone(ctx, model, branchImg);
+    }
+
+    paint();
+    if (!branchLoaded) ensureBranch(paint);
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(paint).catch(function () {});
+    }
   }
 
   function render(colors, ruleColors, ruleName, libVal) {
     try {
-      var boxL = document.getElementById('co-phone-left');
-      var boxR = document.getElementById('co-phone-right');
-      if (!boxL || !boxR) return; 
+      injectStyles();
 
       if (!libVal) {
         var libEl = document.querySelector('input[name="lib"]:checked');
@@ -119,592 +455,101 @@
       ruleName = ruleName || 'comp';
 
       var isEn = global.CO_I18N && global.CO_I18N.getLang() === 'en';
-      var labelL = document.querySelectorAll('.co-phone-label')[0];
-      if (labelL) labelL.textContent = isEn ? 'Default Palette' : '默认配色';
-      var labelR = document.querySelectorAll('.co-phone-label')[1];
-      if (labelR) labelR.textContent = isEn ? 'Generated Palette' : '衍生配色';
-
-      function safeColor(c) { return c || { r: 163, g: 196, b: 178 }; }
-      
       var state = global.__co_state || {};
       var genNames = state.genNames || [];
       var ruleNames = state.ruleNames || [];
 
-      function extractName(htmlStr) {
-        if (!htmlStr) return '无';
-        var parts = htmlStr.split('<br>');
-        if (parts.length > 1) {
-          var rawName = parts[1].trim();
-          rawName = rawName.replace(/\s*\([^)]+\)/g, '');
-          rawName = rawName.split(' - ')[0].trim();
-          return rawName;
-        }
-        return '无';
-      }
+      var libT = isEn ? { morandi: 'Morandi', cn: 'Chinese', jp: 'Japanese', cyber: 'Cyberpunk', none: 'Unlimited' } : { morandi: '莫兰迪', cn: '中式', jp: '日式', cyber: '赛博', none: '无限制' };
+      var ruleT = isEn ? { comp: 'Complementary', analog: 'Analogous', triad: 'Triadic', split: 'Split', square: 'Square', mono: 'Mono' } : { comp: '互补', analog: '类似', triad: '三角', split: '分裂互补', square: '四方', mono: '灰度' };
+      var subT = isEn ? { morandi: 'Morandi Color', cn: 'Chinese Traditional', jp: 'Japanese Traditional', cyber: 'Cyberpunk', none: 'Misc Colors' } : { morandi: '莫兰迪色', cn: '中式传统色', jp: '日式传统色', cyber: '赛博朋克色', none: '综合配色' };
+      var libEn = { morandi: 'MORANDI', cn: 'CHINESE', jp: 'JAPANESE', cyber: 'CYBERPUNK', none: 'UNLIMITED' };
+      var ruleEn = { comp: 'COMPLEMENTARY', analog: 'ANALOGOUS', triad: 'TRIADIC', split: 'SPLIT', square: 'SQUARE', mono: 'MONO' };
 
-      function getRgbStr(c) { return c.r + '/' + c.g + '/' + c.b; }
+      var libTitle = libT[libVal] || (isEn ? 'Unlimited' : '无限制');
+      var ruleTitle = ruleT[ruleName] || (isEn ? 'Complementary' : '互补');
+      var subtitle = subT[libVal] || (isEn ? 'Misc Colors' : '综合配色');
 
-      var libTitleMap = isEn ? { 'morandi': 'Morandi', 'cn': 'Chinese', 'jp': 'Japanese', 'cyber': 'Cyberpunk', 'none': 'Unlimited' } : { 'morandi': '莫兰迪', 'cn': '中式', 'jp': '日式', 'cyber': '赛博', 'none': '无限制' };
-      var ruleTitleMap = isEn ? { 'comp': 'Complementary', 'analog': 'Analogous', 'triad': 'Triadic', 'split': 'Split', 'square': 'Square', 'mono': 'Mono' } : { 'comp': '互补', 'analog': '类似', 'triad': '三角', 'split': '分裂互补', 'square': '四方', 'mono': '灰度' };
-      var subtitleMap = isEn ? { 'morandi': 'Morandi Color', 'cn': 'Chinese Traditional', 'jp': 'Japanese Traditional', 'cyber': 'Cyberpunk', 'none': 'Misc Colors' } : { 'morandi': '莫兰迪色', 'cn': '中式传统色', 'jp': '日式传统色', 'cyber': '赛博朋克色', 'none': '综合配色' };
-
-      var libTitle = libTitleMap[libVal] || (isEn ? 'Unlimited' : '无限制');
-      var ruleTitle = ruleTitleMap[ruleName] || (isEn ? 'Complementary' : '互补');
-      var subtitleText = subtitleMap[libVal] || (isEn ? 'Misc Colors' : '综合配色');
-
-      var titleLeft = isEn ? (libTitle + ' Palette') : (libTitle + '配色');
+      var titleLeft  = isEn ? (libTitle + ' Palette') : (libTitle + '配色');
       var titleRight = isEn ? (libTitle + ' ' + ruleTitle) : (libTitle + ruleTitle + '色');
-      
-      var libEnMap = { 'morandi': 'MORANDI', 'cn': 'CHINESE', 'jp': 'JAPANESE', 'cyber': 'CYBERPUNK', 'none': 'UNLIMITED' };
-      var ruleEnMap = { 'comp': 'COMPLEMENTARY', 'analog': 'ANALOGOUS', 'triad': 'TRIADIC', 'split': 'SPLIT', 'square': 'SQUARE', 'mono': 'MONO' };
-      
-      var pLeft = isEn ? titleLeft.toUpperCase() : ((libEnMap[libVal] || 'UNLIMITED') + ' COLOR');
-      var pRight = isEn ? titleRight.toUpperCase() : ((libEnMap[libVal] || 'UNLIMITED') + ' ' + (ruleEnMap[ruleName] || 'COLOR'));
+      var pLeft  = isEn ? titleLeft.toUpperCase()  : ((libEn[libVal] || 'UNLIMITED') + ' COLOR');
+      var pRight = isEn ? titleRight.toUpperCase() : ((libEn[libVal] || 'UNLIMITED') + ' ' + (ruleEn[ruleName] || 'COLOR'));
 
-      function getTitleInfo(text, isEn) {
-        var len = text.length;
-        if (isEn) {
-          if (len <= 14) return { fs: 24, ls: 4 };
-          if (len <= 18) return { fs: 20, ls: 3 };
-          if (len <= 22) return { fs: 18, ls: 2 };
-          return { fs: 16, ls: 1 };
-        }
-        if (len <= 5) return { fs: 30, ls: 12 };
-        if (len === 6) return { fs: 28, ls: 10 };
-        if (len === 7) return { fs: 24, ls: 8 };
-        return { fs: 22, ls: 6 };
-      }
-      
-      var tInfoL = getTitleInfo(titleLeft, isEn);
-      var tInfoR = getTitleInfo(titleRight, isEn);
+      var texts = {
+        titleLeft: titleLeft,
+        titleRight: titleRight,
+        pLeft: pLeft,
+        pRight: pRight,
+        tInfoL: getTitleInfo(titleLeft, isEn),
+        tInfoR: getTitleInfo(titleRight, isEn),
+        lsLeft: getEnSpacing(pLeft),
+        lsRight: getEnSpacing(pRight),
+        subtitle: subtitle,
+        footerText: isEn ? "WeChat: Jiushu's Vision" : '公众号：九叔的视野',
+        time: nowTime()
+      };
 
-      function getEnLetterSpacing(text) {
-        var len = text.length;
-        if (len <= 12) return '6px';
-        if (len <= 16) return '4px';
-        if (len <= 20) return '3px';
-        return '2px';
-      }
-      var lsLeft = getEnLetterSpacing(pLeft);
-      var lsRight = getEnLetterSpacing(pRight);
+      models['co-phone-left']  = buildLeftModel(colors, genNames, texts);
+      models['co-phone-right'] = buildRightModel(colors, ruleColors, ruleNames, genNames, ruleName, texts);
 
-      var now = new Date();
-      var timeStr = (now.getHours() < 10 ? '0' + now.getHours() : now.getHours()) + ':' + (now.getMinutes() < 10 ? '0' + now.getMinutes() : now.getMinutes());
-      var footerText = isEn ? 'WeChat: Jiushu\'s Vision' : '公众号：九叔的视野';
-
-      var svgShadow = `
-        <svg class="cp-branch-svg" viewBox="0 0 250 932" preserveAspectRatio="xMinYMid slice" xmlns="http://www.w3.org/2000/svg" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index: 99;">
-          <defs>
-            <filter id="shadowBlur"><feGaussianBlur stdDeviation="3" /></filter>
-            <linearGradient id="fadeOut" x1="0%" y1="100%" x2="0%" y2="0%">
-              <stop offset="0%" stop-color="rgba(0,0,0,0.35)" />
-              <stop offset="70%" stop-color="rgba(0,0,0,0.1)" />
-              <stop offset="100%" stop-color="rgba(0,0,0,0)" />
-            </linearGradient>
-          </defs>
-          
-          <!-- 1. 左侧主树干 -->
-          <g filter="url(#shadowBlur)" fill="url(#fadeOut)" transform="translate(130, 940) rotate(-15) scale(1.6)">
-            <path d="M 0 0 C 20 -80 10 -160 30 -240 C 40 -320 10 -400 30 -480 C 40 -520 20 -560 30 -600 L 25 -600 C 15 -560 35 -520 25 -480 C 5 -400 35 -320 25 -240 C 5 -160 15 -80 -5 0 Z" />
-            <path d="M 15 -180 C -10 -200 -30 -230 -40 -260 L -35 -262 C -25 -230 -5 -200 18 -185 Z" />
-            <path d="M 20 -320 C -10 -340 -30 -360 -50 -390 L -45 -393 C -25 -360 -5 -340 23 -325 Z" />
-            <path d="M 25 -220 C 70 -240 120 -260 170 -300 L 175 -295 C 125 -255 70 -235 28 -215 Z" />
-            <path d="M 25 -400 C 80 -420 140 -440 200 -480 L 205 -475 C 145 -435 80 -415 28 -395 Z" />
-            <path d="M 30 -520 C 90 -540 150 -560 210 -590 L 215 -585 C 155 -555 90 -535 32 -515 Z" />
-            <path d="M 28 -580 C 70 -590 110 -600 140 -620 L 145 -615 C 110 -595 70 -585 30 -575 Z" />
-            <path d="M 80 -380 C 100 -400 130 -420 160 -450 L 164 -446 C 134 -416 104 -396 84 -376 Z" />
-            <path d="M 70 -260 C 100 -280 130 -290 160 -310 L 163 -306 C 133 -286 103 -276 74 -256 Z" />
-          </g>
-
-          <!-- 2. 右侧倒置的树 -->
-          <g filter="url(#shadowBlur)" fill="url(#fadeOut)" transform="translate(220, 820) rotate(165) scale(0.75)">
-            <path d="M 0 0 C 20 -80 10 -160 30 -240 C 40 -320 10 -400 30 -480 C 40 -520 20 -560 30 -600 L 25 -600 C 15 -560 35 -520 25 -480 C 5 -400 35 -320 25 -240 C 5 -160 15 -80 -5 0 Z" />
-            <path d="M 15 -180 C -10 -200 -30 -230 -40 -260 L -35 -262 C -25 -230 -5 -200 18 -185 Z" />
-            <path d="M 20 -320 C -10 -340 -30 -360 -50 -390 L -45 -393 C -25 -360 -5 -340 23 -325 Z" />
-            <path d="M 25 -220 C 70 -240 120 -260 170 -300 L 175 -295 C 125 -255 70 -235 28 -215 Z" />
-            <path d="M 25 -400 C 80 -420 140 -440 200 -480 L 205 -475 C 145 -435 80 -415 28 -395 Z" />
-            <path d="M 30 -520 C 90 -540 150 -560 210 -590 L 215 -585 C 155 -555 90 -535 32 -515 Z" />
-            <path d="M 28 -580 C 70 -590 110 -600 140 -620 L 145 -615 C 110 -595 70 -585 30 -575 Z" />
-            <path d="M 80 -380 C 100 -400 130 -420 160 -450 L 164 -446 C 134 -416 104 -396 84 -376 Z" />
-            <path d="M 70 -260 C 100 -280 130 -290 160 -310 L 163 -306 C 133 -286 103 -276 74 -256 Z" />
-            <path d="M 35 -580 C 80 -600 130 -630 180 -680 L 185 -675 C 130 -625 85 -595 40 -570 Z" />
-            <path d="M 35 -460 C 90 -470 140 -490 190 -520 L 193 -515 C 140 -485 90 -465 38 -450 Z" />
-            <path d="M 20 -300 C -20 -320 -50 -350 -80 -390 L -75 -393 C -45 -350 -15 -320 23 -305 Z" />
-            <path d="M -5 0 C 10 40 20 80 30 120 L 25 120 C 15 80 5 40 -10 0 Z" />
-          </g>
-        </svg>
-      `;
-
-      // --- 左侧 ---
-      var lA = safeColor(colors[0]);
-      var lB = safeColor(colors[2]);
-      
-      // 👇 直接调用标准算法，算出最适合背景的文字颜色（黑或白）
-      var leftTextColor = C.textOn(lA); 
-      var themeClassL = (leftTextColor === '#111111') ? 'cp-theme-light' : 'cp-theme-dark';
-
-      var nameL1 = extractName(genNames[0]);
-      var nameL2 = extractName(genNames[2]);
-      var styleL1 = getCardTitleStyle(nameL1);
-      var styleL2 = getCardTitleStyle(nameL2);
-
-      boxL.innerHTML = `
-        <div class="cp-bg">
-          <div class="left" style="background:${C.rgbToHex(lA)};"></div>
-          <div class="right" style="background:${C.rgbToHex(lB)};"></div>
-        </div>
-        ${svgShadow}
-        <div class="cp-status" style="color:${leftTextColor};">
-          <div>${timeStr}</div>
-          <div style="display:flex; align-items:center;">
-             <div class="cp-sig">
-                <i style="background:currentColor;"></i>
-                <i style="background:currentColor;"></i>
-                <i style="background:currentColor;"></i>
-                <i style="background:currentColor;"></i>
-             </div>
-             <div class="cp-batt" style="border-color:currentColor;">
-                <div class="cp-batt-lv" style="background:currentColor;"></div>
-             </div>
-          </div>
-        </div>
-        <div class="cp-title">
-          <h1 style="font-size: ${tInfoL.fs}px; letter-spacing: ${tInfoL.ls}px; margin-left: ${tInfoL.ls}px; color: ${leftTextColor};">${titleLeft}</h1>
-          <p style="letter-spacing: ${lsLeft}; color: ${leftTextColor}; opacity: 0.7;">${pLeft}</p>
-        </div>
-        <div class="cp-cards cp-grid-2">
-          <div class="card-wrapper"><div class="cp-card" style="background:${C.rgbToHex(lA)}; color:${C.textOn(lA)};"><div class="subtitle">${subtitleText}</div><div class="main-title" style="font-size: ${styleL1.fs}px; letter-spacing: ${styleL1.ls}px; margin-left: ${styleL1.ls}px;">${nameL1}</div><div class="info">RGB:${getRgbStr(lA)}<br>${C.rgbToHex(lA)}</div></div></div>
-          <div class="card-wrapper"><div class="cp-card" style="background:${C.rgbToHex(lB)}; color:${C.textOn(lB)};"><div class="subtitle">${subtitleText}</div><div class="main-title" style="font-size: ${styleL2.fs}px; letter-spacing: ${styleL2.ls}px; margin-left: ${styleL2.ls}px;">${nameL2}</div><div class="info">RGB:${getRgbStr(lB)}<br>${C.rgbToHex(lB)}</div></div></div>
-        </div>
-        <div class="cp-footer ${themeClassL}"><span>${footerText}</span></div>
-      `;
-
-      // --- 右侧 ---
-      var rBg = safeColor(colors[0]);
-      var hexBg = C.rgbToHex(rBg);
-      var mainC = safeColor(colors[2]);
-      var hexMain = C.rgbToHex(mainC);
-      
-      var rCards = [];
-      if (ruleColors && ruleColors.length > 0) {
-        if (ruleName === 'square') rCards = ruleColors.slice(0, 4).map(safeColor);
-        else if (ruleName === 'triad' || ruleName === 'split') rCards = ruleColors.slice(0, 3).map(safeColor);
-        else if (ruleName === 'mono') rCards = ruleColors.slice(0, 5).map(safeColor);
-        else rCards = ruleColors.slice(0, 2).map(safeColor);
-      } else {
-        rCards = [safeColor(colors[0]), safeColor(colors[1])];
-      }
-
-      var drawers = rCards.slice(1);
-      var textR = C.textOn(rBg);
-      var themeClassR = (textR === '#111111') ? 'cp-theme-light' : 'cp-theme-dark';
-
-      var nameR = extractName(genNames[2]);
-      var styleR = getCardTitleStyle(nameR);
-
-      var mainCardHtml = `
-        <div class="cp-main-card-wrapper cp-grid-2">
-          <div class="card-wrapper">
-            <div class="cp-card" style="background:${hexMain}; color:${C.textOn(mainC)};">
-              <div class="subtitle">${subtitleText}</div>
-              <div class="main-title" style="font-size: ${styleR.fs}px; letter-spacing: ${styleR.ls}px; margin-left: ${styleR.ls}px;">${nameR}</div>
-              <div class="info">RGB:${getRgbStr(mainC)}<br>${hexMain}</div>
-            </div>
-          </div>
-        </div>
-      `;
-
-      var drawerCardsHtml = drawers.map(function(c, idx) {
-        var hex = C.rgbToHex(c);
-        var currentRuleName = ruleNames[idx + 1]; 
-        return `
-          <div class="cp-drawer" style="background:${hex}; color:${C.textOn(c)};">
-            <span class="cp-drawer-title">${extractName(currentRuleName)}</span>
-            <span class="cp-drawer-hex">${hex}</span>
-          </div>
-        `;
-      }).join('');
-
-      boxR.innerHTML = `
-        <div class="cp-bg">
-          <div class="left" style="background:${hexBg}; width: 100%;"></div>
-        </div>
-        ${svgShadow}
-        <div class="cp-status" style="color:${textR};">
-          <div>${timeStr}</div>
-          <div style="display:flex; align-items:center;">
-             <div class="cp-sig">
-                <i style="background:currentColor;"></i>
-                <i style="background:currentColor;"></i>
-                <i style="background:currentColor;"></i>
-                <i style="background:currentColor;"></i>
-             </div>
-             <div class="cp-batt" style="border-color:currentColor;">
-                <div class="cp-batt-lv" style="background:currentColor;"></div>
-             </div>
-          </div>
-        </div>
-        <div class="cp-island"></div>
-        <div class="cp-title ${themeClassR}">
-          <h1 style="font-size: ${tInfoR.fs}px; letter-spacing: ${tInfoR.ls}px; margin-left: ${tInfoR.ls}px;">${titleRight}</h1>
-          <p style="letter-spacing: ${lsRight};">${pRight}</p>
-        </div>
-        
-        <div class="cp-cards-stack">
-          ${mainCardHtml}
-          <div class="cp-drawer-list">
-            ${drawerCardsHtml}
-          </div>
-        </div>
-
-        <div class="cp-footer ${themeClassR}"><span>${footerText}</span></div>
-      `;
+      mountPreview('co-phone-left',  models['co-phone-left']);
+      mountPreview('co-phone-right', models['co-phone-right']);
 
     } catch (e) {
-      console.error('双手机渲染失败:', e);
+      console.error('渲染失败:', e);
     }
   }
 
-  // ==========================================
-  // 纯原生 Canvas 绘制 (完美同步网页版)
-  // ==========================================
+  function exportPNG(model, filename) {
+    var s = L.EXPORT_SCALE, pad = L.PAD;
+    var cw = L.W + pad * 2, ch = L.H + pad * 2;
+    var canvas = document.createElement('canvas');
+    canvas.width  = cw * s;
+    canvas.height = ch * s;
+
+    var ctx = canvas.getContext('2d');
+    ctx.scale(s, s);
+    ctx.fillStyle = '#e0e5ec';
+    ctx.fillRect(0, 0, cw, ch);
+    ctx.translate(pad, pad);
+    
+    // 导出调用与预览完全相同的函数，保证分毫不差
+    drawPhone(ctx, model, branchImg);
+
+    var a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = filename;
+    a.click();
+  }
+
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('.cp-download-btn');
     if (!btn) return;
 
-    var targetId = btn.getAttribute('data-target');
-    var targetEl = document.getElementById(targetId);
-    if (!targetEl) return;
+    var id = btn.getAttribute('data-target');
+    var model = models[id];
+    if (!model) return;
 
+    var isEn = global.CO_I18N && global.CO_I18N.getLang() === 'en';
     var originalText = (global.CO_I18N && typeof global.CO_I18N.t === 'function') ? global.CO_I18N.t('saveBig') : btn.textContent;
-    btn.textContent = '生成中...';
 
-    setTimeout(function () {
+    btn.textContent = isEn ? 'Rendering…' : '生成中...';
+
+    ensureBranch(function () {
       try {
-        var bgLeft = targetEl.querySelector('.cp-bg .left').style.backgroundColor || '#6D5DFC';
-        var bgRightEl = targetEl.querySelector('.cp-bg .right');
-        var bgRight = bgRightEl ? bgRightEl.style.backgroundColor : bgLeft;
-        
-        var bgLeftRgb = C.hexToRgb(bgLeft);
-        var canvasTextColor = C.textOn(bgLeftRgb); // 和网页端完全同步
-        var isDark = !(canvasTextColor === '#111111');
-
-        var h1El = targetEl.querySelector('.cp-title h1');
-        var titleH1 = h1El.textContent;
-        var titleP = targetEl.querySelector('.cp-title p').textContent;
-        var footer = targetEl.querySelector('.cp-footer span').textContent;
-        var time = targetEl.querySelector('.cp-status div').textContent;
-        
-        var h1Style = window.getComputedStyle(h1El);
-        var titleSize = parseFloat(h1Style.fontSize) || 26;
-        var titleSpacing = parseFloat(h1Style.letterSpacing) || 6;
-        var titleMarginLeft = parseFloat(h1Style.marginLeft) || 6;
-
-        var pEl = targetEl.querySelector('.cp-title p');
-        var pStyle = window.getComputedStyle(pEl);
-        var pSpacing = parseFloat(pStyle.letterSpacing) || 2;
-
-        var svgNode = targetEl.querySelector('.cp-branch-svg');
-        var svgStr = svgNode ? new XMLSerializer().serializeToString(svgNode) : '';
-        var svgDataUrl = svgStr ? 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr) : null;
-
-        var phoneW = 320;
-        var phoneH = 694;
-        var padding = 40;
-        var scale = 2;
-
-        var branchImg = new Image();
-        branchImg.onload = function() { renderFinalCanvas(branchImg); };
-        branchImg.onerror = function() { renderFinalCanvas(null); };
-
-        if (svgDataUrl) {
-          branchImg.src = svgDataUrl;
-        } else {
-          renderFinalCanvas(null);
-        }
-
-        function renderFinalCanvas(branchImg) {
-          var canvas = document.createElement('canvas');
-          canvas.width = (phoneW + padding * 2) * scale;
-          canvas.height = (phoneH + padding * 2) * scale;
-          var ctx = canvas.getContext('2d');
-          
-          function fillTextWithSpacing(ctx, text, x, y, spacing, align) {
-            ctx.textAlign = 'left';
-            var totalWidth = 0;
-            var widths = [];
-            for (var i = 0; i < text.length; i++) {
-              var w = ctx.measureText(text[i]).width;
-              widths.push(w);
-              totalWidth += w + spacing;
-            }
-            totalWidth -= spacing;
-            
-            var currentX = x;
-            if (align === 'center') currentX -= totalWidth / 2;
-            else if (align === 'right') currentX -= totalWidth;
-
-            for (var i = 0; i < text.length; i++) {
-              ctx.fillText(text[i], currentX, y);
-              currentX += widths[i] + spacing;
-            }
-          }
-
-          ctx.scale(scale, scale);
-          ctx.fillStyle = '#e0e5ec'; 
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.translate(padding, padding);
-
-          ctx.save();
-          var radius = 40;
-          ctx.beginPath();
-          if (ctx.roundRect) {
-            ctx.roundRect(0, 0, phoneW, phoneH, radius);
-          } else {
-            ctx.moveTo(radius, 0); ctx.lineTo(phoneW - radius, 0); ctx.quadraticCurveTo(phoneW, 0, phoneW, radius);
-            ctx.lineTo(phoneW, phoneH - radius); ctx.quadraticCurveTo(phoneW, phoneH, phoneW - radius, phoneH);
-            ctx.lineTo(radius, phoneH); ctx.quadraticCurveTo(0, phoneH, 0, phoneH - radius);
-            ctx.lineTo(0, radius); ctx.quadraticCurveTo(0, 0, radius, 0);
-          }
-          ctx.closePath();
-          ctx.clip();
-
-          ctx.fillStyle = bgLeft;
-          ctx.fillRect(0, 0, phoneW / 2, phoneH);
-          ctx.fillStyle = bgRight;
-          ctx.fillRect(phoneW / 2, 0, phoneW / 2, phoneH);
-          
-          if (branchImg) {
-            ctx.drawImage(branchImg, 0, 0, phoneW * 0.85, phoneH);
-            ctx.save();
-            ctx.translate(phoneW * 0.9, phoneH * 0.95); 
-            ctx.rotate(Math.PI); 
-            ctx.scale(0.7, 0.7);
-            ctx.drawImage(branchImg, -phoneW * 0.65, -phoneH * 0.9, phoneW * 0.85, phoneH);
-            ctx.restore();
-          }
-
-          ctx.fillStyle = canvasTextColor;
-          ctx.font = '600 14px "Inter", -apple-system, sans-serif';
-          ctx.textAlign = 'left';
-          ctx.fillText(time, 24, 32);
-          
-          var sigX = phoneW - 64;
-          var sigY = 28; 
-          ctx.fillStyle = canvasTextColor;
-          ctx.fillRect(sigX, sigY - 4, 3, 4);
-          ctx.fillRect(sigX + 5, sigY - 6, 3, 6);
-          ctx.fillRect(sigX + 10, sigY - 8, 3, 8);
-          ctx.fillRect(sigX + 15, sigY - 10, 3, 10);
-
-          var batX = phoneW - 38;
-          var batY = 18;
-          ctx.strokeStyle = canvasTextColor;
-          ctx.lineWidth = 1;
-          ctx.strokeRect(batX, batY, 18, 10);
-          ctx.fillStyle = canvasTextColor;
-          ctx.fillRect(batX + 2, batY + 2, 12, 6);
-          ctx.fillRect(batX + 18, batY + 3, 2, 4);
-
-          ctx.fillStyle = '#000';
-          ctx.beginPath();
-          if (ctx.roundRect) ctx.roundRect((phoneW - 100) / 2, 12, 100, 28, 14);
-          else ctx.rect((phoneW - 100) / 2, 12, 100, 28);
-          ctx.fill();
-
-          var titleColor = (targetId === 'co-phone-left') 
-            ? (canvasTextColor === '#111111' ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.9)')
-            : (isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)');
-
-          ctx.fillStyle = titleColor;
-          ctx.font = '600 ' + titleSize + 'px "Noto Serif SC", "Songti SC", "SimSun", serif';
-          fillTextWithSpacing(ctx, titleH1, phoneW / 2 + titleMarginLeft, 120, titleSpacing, 'center');
-          
-          var pColor = (targetId === 'co-phone-left')
-            ? (canvasTextColor === '#111111' ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)')
-            : (isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)');
-
-          ctx.fillStyle = pColor;
-          ctx.font = '12px "Inter", -apple-system, sans-serif';
-          fillTextWithSpacing(ctx, titleP, phoneW / 2, 148, pSpacing, 'center');
-
-          function drawOctagon(x, y, w, h) {
-            var oct = 0.293;
-            ctx.beginPath();
-            ctx.moveTo(x + w * oct, y);
-            ctx.lineTo(x + w * (1 - oct), y);
-            ctx.lineTo(x + w, y + h * oct);
-            ctx.lineTo(x + w, y + h * (1 - oct));
-            ctx.lineTo(x + w * (1 - oct), y + h);
-            ctx.lineTo(x + w * oct, y + h);
-            ctx.lineTo(x, y + h * (1 - oct));
-            ctx.lineTo(x, y + h * oct);
-            ctx.closePath();
-          }
-
-          function drawMainOctagon(cx, cy, c) {
-            var cardW = 180;
-            var cardH = 180;
-            
-            ctx.save();
-            drawOctagon(cx, cy, cardW, cardH);
-            ctx.shadowColor = 'rgba(0,0,0,0.15)'; 
-            ctx.shadowBlur = 20; 
-            ctx.shadowOffsetY = 10; 
-            ctx.fillStyle = c.bg;
-            ctx.fill();
-            
-            ctx.shadowColor = 'transparent';
-            ctx.lineWidth = 1.5;
-            ctx.strokeStyle = c.color === '#111111' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.4)';
-            var inset = 14;
-            drawOctagon(cx + inset, cy + inset, cardW - inset * 2, cardH - inset * 2);
-            ctx.stroke();
-            
-            ctx.fillStyle = c.color;
-            ctx.font = '12px "Noto Serif SC", serif';
-            fillTextWithSpacing(ctx, c.subtitle, cx + cardW / 2, cy + 52, 4, 'center');
-            
-            var tStyle = getCardTitleStyle(c.mainTitle);
-            ctx.font = '600 ' + tStyle.fs + 'px "Playfair Display", "Noto Serif SC", serif';
-            fillTextWithSpacing(ctx, c.mainTitle, cx + cardW / 2, cy + 94, tStyle.ls, 'center');
-            
-            ctx.font = '12px "Inter", -apple-system, sans-serif';
-            var lines = c.info.split('\n');
-            fillTextWithSpacing(ctx, lines[0] || '', cx + cardW / 2, cy + 132, 1, 'center');
-            fillTextWithSpacing(ctx, lines[1] || '', cx + cardW / 2, cy + 150, 1, 'center');
-            ctx.restore();
-          }
-
-          if (targetId === 'co-phone-left') {
-            var cards = Array.from(targetEl.querySelectorAll('.cp-card')).map(function (card) {
-              return {
-                bg: card.style.backgroundColor,
-                color: card.style.color,
-                subtitle: card.querySelector('.subtitle').textContent,
-                mainTitle: card.querySelector('.main-title').textContent,
-                info: card.querySelector('.info').innerText.replace(/<br\s*\/?>/gi, '\n')
-              };
-            });
-
-            var cardY = 200;      
-            var gap = 40;
-
-            cards.forEach(function (c) {
-              var cx = (phoneW - 180) / 2;
-              drawMainOctagon(cx, cardY, c);
-              cardY += 180 + gap;
-            });
-
-          } else {
-            var mainCardEl = targetEl.querySelector('.cp-main-card-wrapper .cp-card');
-            if (mainCardEl) {
-              var mainC = {
-                bg: mainCardEl.style.backgroundColor,
-                color: mainCardEl.style.color,
-                subtitle: mainCardEl.querySelector('.subtitle').textContent,
-                mainTitle: mainCardEl.querySelector('.main-title').textContent,
-                info: mainCardEl.querySelector('.info').innerText.replace(/<br\s*\/?>/gi, '\n')
-              };
-              var cx = (phoneW - 180) / 2;
-              var cy = 200; 
-              
-              drawMainOctagon(cx, cy, mainC);
-            }
-
-            var drawerEls = Array.from(targetEl.querySelectorAll('.cp-drawer'));
-            var drawerY = 200 + 180 + 30;
-            var drawerW = 240;
-            var drawerH = 46;
-            var drawerGap = 8;
-            
-            drawerEls.forEach(function(drawer) {
-              var bg = drawer.style.backgroundColor;
-              var color = drawer.style.color;
-              var title = drawer.querySelector('.cp-drawer-title').textContent;
-              var hex = drawer.querySelector('.cp-drawer-hex').textContent;
-              
-              var dx = (phoneW - drawerW) / 2;
-              var r = 12;
-              
-              ctx.save();
-              ctx.beginPath();
-              if (ctx.roundRect) {
-                ctx.roundRect(dx, drawerY, drawerW, drawerH, r);
-              } else {
-                ctx.moveTo(dx + r, drawerY);
-                ctx.lineTo(dx + drawerW - r, drawerY);
-                ctx.quadraticCurveTo(dx + drawerW, drawerY, dx + drawerW, drawerY + r);
-                ctx.lineTo(dx + drawerW, drawerY + drawerH - r);
-                ctx.quadraticCurveTo(dx + drawerW, drawerY + drawerH, dx + drawerW - r, drawerY + drawerH);
-                ctx.lineTo(dx + r, drawerY + drawerH);
-                ctx.quadraticCurveTo(dx, drawerY + drawerH, dx, drawerY + drawerH - r);
-                ctx.lineTo(dx, drawerY + r);
-                ctx.quadraticCurveTo(dx, drawerY, dx + r, drawerY);
-              }
-              ctx.closePath();
-              
-              ctx.fillStyle = bg;
-              ctx.shadowColor = 'rgba(0,0,0,0.15)';
-              ctx.shadowBlur = 10;
-              ctx.shadowOffsetY = 4;
-              ctx.fill();
-              
-              ctx.shadowColor = 'transparent';
-              ctx.save();
-              ctx.clip();
-              ctx.fillStyle = 'rgba(255,255,255,0.25)';
-              ctx.fillRect(dx, drawerY, 6, drawerH);
-              ctx.restore();
-              
-              ctx.fillStyle = color;
-              ctx.font = '600 15px "Noto Serif SC", serif';
-              ctx.textAlign = 'left';
-              ctx.fillText(title, dx + 20, drawerY + 28);
-              
-              ctx.font = '11px "Inter", -apple-system, sans-serif';
-              ctx.textAlign = 'right';
-              ctx.fillText(hex, dx + drawerW - 20, drawerY + 28);
-              
-              ctx.restore();
-              
-              drawerY += drawerH + drawerGap;
-            });
-          }
-
-          ctx.fillStyle = isDark ? '#FFF' : '#111';
-          ctx.font = '12px "Inter", -apple-system, sans-serif';
-          fillTextWithSpacing(ctx, footer, phoneW - 20, phoneH - 20, 0, 'right');
-
-          ctx.restore();
-
-          ctx.lineWidth = 10;
-          ctx.strokeStyle = '#111';
-          ctx.beginPath();
-          if (ctx.roundRect) ctx.roundRect(-5, -5, phoneW + 10, phoneH + 10, 45);
-          else ctx.rect(-5, -5, phoneW + 10, phoneH + 10);
-          ctx.stroke();
-
-          var a = document.createElement('a');
-          a.href = canvas.toDataURL('image/png');
-          a.download = targetId === 'co-phone-left' ? '默认配色.png' : '衍生配色.png';
-          a.click();
-          
-          btn.textContent = originalText;
-          
-          if (global.CO_Util && typeof global.CO_Util.toast === 'function') {
-            var isEn = global.CO_I18N && global.CO_I18N.getLang() === 'en';
-            global.CO_Util.toast(isEn ? 'Image saved' : '截图已保存', 'ok');
-          }
+        var name = id === 'co-phone-left' ? (isEn ? 'default-palette.png' : '默认配色.png') : (isEn ? 'generated-palette.png' : '衍生配色.png');
+        exportPNG(model, name);
+        btn.textContent = originalText;
+        if (global.CO_Util && typeof global.CO_Util.toast === 'function') {
+          global.CO_Util.toast(isEn ? 'Image saved' : '截图已保存', 'ok');
         }
       } catch (err) {
         console.error('绘制失败:', err);
-        alert('绘制失败: ' + err.message);
-        btn.textContent = '生成失败';
+        btn.textContent = isEn ? 'Failed' : '生成失败';
         setTimeout(function () { btn.textContent = originalText; }, 2000);
       }
-    }, 20);
+    });
   });
 
   global.CO_PhonePreview = { render: render };
+
 })(window);
