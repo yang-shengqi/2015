@@ -1,13 +1,11 @@
 /* ============================================================
- * color-phone-preview.js —— 纯逻辑渲染版 (完美对齐 + 抽屉式衍生色)
+ * color-phone-preview.js —— 纯逻辑渲染版 (动态字号防溢出)
  * ============================================================ */
 (function (global) {
   'use strict';
 
   var C = global.CO_Color;
-  var N = global.CO_Names;
 
-  // 注入抽屉卡片的专属样式
   function injectStyles() {
     if (document.getElementById('cp-stack-styles')) return;
     var style = document.createElement('style');
@@ -15,7 +13,7 @@
     style.textContent = `
       .cp-cards-stack {
         position: absolute;
-        top: 200px; /* 与左侧卡片顶端严格对齐 */
+        top: 200px;
         left: 0;
         width: 100%;
         display: flex;
@@ -31,10 +29,9 @@
         justify-content: center;
         align-items: center;
         position: relative;
-        margin-bottom: 30px; /* 与下方色卡至少 30px 间距 */
+        margin-bottom: 30px;
         flex-shrink: 0;
       }
-      /* 让内部真正的卡片撑满容器 */
       .cp-main-card-wrapper .card-wrapper {
         width: 100%;
         height: 100%;
@@ -59,7 +56,6 @@
         position: relative;
         overflow: hidden;
       }
-      /* 左侧拟物高光 */
       .cp-drawer::before {
         content: '';
         position: absolute;
@@ -71,6 +67,9 @@
         font-family: "Noto Serif SC", serif;
         font-size: 15px;
         font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .cp-drawer-hex {
         font-family: "Inter", -apple-system, sans-serif;
@@ -82,7 +81,6 @@
     document.head.appendChild(style);
   }
 
-  // 👇 直接移除左右两个刷新按钮
   function removeRandomButtons() {
     var btnLeft = document.getElementById('cp-btn-left-random');
     var btnRight = document.getElementById('cp-btn-random');
@@ -95,6 +93,18 @@
     document.addEventListener('DOMContentLoaded', removeRandomButtons);
   } else {
     removeRandomButtons();
+  }
+
+  // 👇 动态字号计算：字越多，字号和字间距越小，绝对不超出八角白线
+  function getCardTitleStyle(text) {
+    if (!text) return { fs: 30, ls: 6 };
+    var len = text.length;
+    if (len <= 2) return { fs: 30, ls: 6 };   // 如："灰蓝"
+    if (len === 3) return { fs: 26, ls: 4 };  // 如："海天蓝"
+    if (len === 4) return { fs: 22, ls: 3 };  // 如："无标准名"
+    if (len <= 7) return { fs: 18, ls: 2 };   // 如："无标准名称" 或 "灰蓝 (84%)"
+    if (len <= 10) return { fs: 15, ls: 1 };  // 如："灰蓝 (84.1%)"
+    return { fs: 12, ls: 0 };                 // 兜底
   }
 
   function render(colors, ruleColors, ruleName, libVal) {
@@ -116,11 +126,22 @@
       if (labelR) labelR.textContent = isEn ? 'Generated Palette' : '衍生配色';
 
       function safeColor(c) { return c || { r: 163, g: 196, b: 178 }; }
-      function getName(rgb) {
-        if (!N || !N.lookup) return 'Color';
-        var m = N.lookup(rgb, 'cn');
-        return m ? m.name : 'Color';
+      
+      // 👇 直接从全局 state 读取页面已经算好的名字，绝不重新查库
+      var state = global.__co_state || {};
+      var genNames = state.genNames || [];
+      var ruleNames = state.ruleNames || [];
+
+      function extractName(htmlStr) {
+        if (!htmlStr) return '无';
+        var parts = htmlStr.split('<br>');
+        if (parts.length > 1) {
+          // 原样提取，保留 (84.1%) 这种相似度后缀
+          return parts[1].split(' - ')[0].trim();
+        }
+        return '无';
       }
+
       function getRgbStr(c) { return c.r + '/' + c.g + '/' + c.b; }
 
       var libTitleMap = isEn 
@@ -210,6 +231,11 @@
       var isLB_Light = C.luminance(lB) > 0.6;
       var themeClassL = (isLA_Light && isLB_Light) ? 'cp-theme-light' : 'cp-theme-dark';
 
+      var nameL1 = extractName(genNames[0]);
+      var nameL2 = extractName(genNames[2]);
+      var styleL1 = getCardTitleStyle(nameL1);
+      var styleL2 = getCardTitleStyle(nameL2);
+
       boxL.innerHTML = `
         <div class="cp-bg">
           <div class="left" style="background:${C.rgbToHex(lA)};"></div>
@@ -229,17 +255,19 @@
           <p style="letter-spacing: ${lsLeft};">${pLeft}</p>
         </div>
         <div class="cp-cards cp-grid-2">
-          <div class="card-wrapper"><div class="cp-card" style="background:${C.rgbToHex(lA)}; color:${C.textOn(lA)};"><div class="subtitle">${subtitleText}</div><div class="main-title">${getName(lA)}</div><div class="info">RGB:${getRgbStr(lA)}<br>${C.rgbToHex(lA)}</div></div></div>
-          <div class="card-wrapper"><div class="cp-card" style="background:${C.rgbToHex(lB)}; color:${C.textOn(lB)};"><div class="subtitle">${subtitleText}</div><div class="main-title">${getName(lB)}</div><div class="info">RGB:${getRgbStr(lB)}<br>${C.rgbToHex(lB)}</div></div></div>
+          <div class="card-wrapper"><div class="cp-card" style="background:${C.rgbToHex(lA)}; color:${C.textOn(lA)};"><div class="subtitle">${subtitleText}</div><div class="main-title" style="font-size: ${styleL1.fs}px; letter-spacing: ${styleL1.ls}px; margin-left: ${styleL1.ls}px;">${nameL1}</div><div class="info">RGB:${getRgbStr(lA)}<br>${C.rgbToHex(lA)}</div></div></div>
+          <div class="card-wrapper"><div class="cp-card" style="background:${C.rgbToHex(lB)}; color:${C.textOn(lB)};"><div class="subtitle">${subtitleText}</div><div class="main-title" style="font-size: ${styleL2.fs}px; letter-spacing: ${styleL2.ls}px; margin-left: ${styleL2.ls}px;">${nameL2}</div><div class="info">RGB:${getRgbStr(lB)}<br>${C.rgbToHex(lB)}</div></div></div>
         </div>
         <div class="cp-footer ${themeClassL}"><span>${footerText}</span></div>
       `;
 
-      // --- 右侧 (升级版层叠抽屉) ---
-      var rMain = safeColor(colors[0]);
-      var hexMain = C.rgbToHex(rMain);
-      var rCards = [];
+      // --- 右侧 ---
+      var rBg = safeColor(colors[0]);
+      var hexBg = C.rgbToHex(rBg);
+      var mainC = safeColor(colors[2]);
+      var hexMain = C.rgbToHex(mainC);
       
+      var rCards = [];
       if (ruleColors && ruleColors.length > 0) {
         if (ruleName === 'square') rCards = ruleColors.slice(0, 4).map(safeColor);
         else if (ruleName === 'triad' || ruleName === 'split') rCards = ruleColors.slice(0, 3).map(safeColor);
@@ -248,53 +276,40 @@
       } else {
         rCards = [safeColor(colors[0]), safeColor(colors[1])];
       }
-      
-      // 强制让主卡读取真正的 colors[0]
-      var mainC = safeColor(colors[0]);
-      
-      // 抽屉里排除掉主色，只留衍生色
-      var drawers = rCards.filter(function(c) {
-        return c.r !== mainC.r || c.g !== mainC.g || c.b !== mainC.b;
-      });
-      
-      var textR = C.textOn(rMain);
+
+      var drawers = rCards.slice(1);
+      var textR = C.textOn(rBg);
       var themeClassR = (textR === '#111111') ? 'cp-theme-light' : 'cp-theme-dark';
 
-      var mainCardHtml = '';
-      var drawerCardsHtml = '';
+      var nameR = extractName(genNames[2]);
+      var styleR = getCardTitleStyle(nameR);
 
-      if (rCards.length > 0) {
-        // 上面：主色的八角，加上 cp-grid-2 完美继承原本的 180x180 和字号
-        var mainC = rCards[0];
-        var mainHex = C.rgbToHex(mainC);
-        mainCardHtml = `
-          <div class="cp-main-card-wrapper cp-grid-2">
-            <div class="card-wrapper">
-              <div class="cp-card" style="background:${mainHex}; color:${C.textOn(mainC)};">
-                <div class="subtitle">${subtitleText}</div>
-                <div class="main-title">${getName(mainC)}</div>
-                <div class="info">RGB:${getRgbStr(mainC)}<br>${mainHex}</div>
-              </div>
+      var mainCardHtml = `
+        <div class="cp-main-card-wrapper cp-grid-2">
+          <div class="card-wrapper">
+            <div class="cp-card" style="background:${hexMain}; color:${C.textOn(mainC)};">
+              <div class="subtitle">${subtitleText}</div>
+              <div class="main-title" style="font-size: ${styleR.fs}px; letter-spacing: ${styleR.ls}px; margin-left: ${styleR.ls}px;">${nameR}</div>
+              <div class="info">RGB:${getRgbStr(mainC)}<br>${hexMain}</div>
             </div>
           </div>
+        </div>
+      `;
+
+      var drawerCardsHtml = drawers.map(function(c, idx) {
+        var hex = C.rgbToHex(c);
+        var currentRuleName = ruleNames[idx + 1]; 
+        return `
+          <div class="cp-drawer" style="background:${hex}; color:${C.textOn(c)};">
+            <span class="cp-drawer-title">${extractName(currentRuleName)}</span>
+            <span class="cp-drawer-hex">${hex}</span>
+          </div>
         `;
-        
-        // 下面：抽屉色卡
-        var drawers = rCards.slice(1);
-        drawerCardsHtml = drawers.map(function(c) {
-          var hex = C.rgbToHex(c);
-          return `
-            <div class="cp-drawer" style="background:${hex}; color:${C.textOn(c)};">
-              <span class="cp-drawer-title">${getName(c)}</span>
-              <span class="cp-drawer-hex">${hex}</span>
-            </div>
-          `;
-        }).join('');
-      }
+      }).join('');
 
       boxR.innerHTML = `
         <div class="cp-bg">
-          <div class="left" style="background:${hexMain}; width: 100%;"></div>
+          <div class="left" style="background:${hexBg}; width: 100%;"></div>
         </div>
         ${svgShadow}
         <div class="cp-status ${themeClassR}">
@@ -326,7 +341,7 @@
   }
 
   // ==========================================
-  // 纯原生 Canvas 绘制（完美匹配新布局与字号）
+  // 纯原生 Canvas 绘制
   // ==========================================
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('.cp-download-btn');
@@ -361,7 +376,6 @@
         var pStyle = window.getComputedStyle(pEl);
         var pSpacing = parseFloat(pStyle.letterSpacing) || 2;
 
-        // 提取树枝 SVG
         var svgNode = targetEl.querySelector('.cp-branch-svg');
         var svgStr = svgNode ? new XMLSerializer().serializeToString(svgNode) : '';
         var svgDataUrl = svgStr ? 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr) : null;
@@ -381,7 +395,6 @@
           renderFinalCanvas(null);
         }
 
-        // 3. 核心绘图函数
         function renderFinalCanvas(branchImg) {
           var canvas = document.createElement('canvas');
           canvas.width = (phoneW + padding * 2) * scale;
@@ -414,7 +427,6 @@
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.translate(padding, padding);
 
-          // 裁剪圆角
           ctx.save();
           var radius = 40;
           ctx.beginPath();
@@ -429,14 +441,12 @@
           ctx.closePath();
           ctx.clip();
 
-          // 背景与树枝
           ctx.fillStyle = bgLeft;
           ctx.fillRect(0, 0, phoneW / 2, phoneH);
           ctx.fillStyle = bgRight;
           ctx.fillRect(phoneW / 2, 0, phoneW / 2, phoneH);
           if (branchImg) ctx.drawImage(branchImg, 0, 0, phoneW * 0.6, phoneH);
 
-          // 状态栏
           ctx.fillStyle = isDark ? '#FFF' : '#111';
           ctx.font = '600 14px "Inter", -apple-system, sans-serif';
           ctx.textAlign = 'left';
@@ -459,14 +469,12 @@
           ctx.fillRect(batX + 2, batY + 2, 12, 6);
           ctx.fillRect(batX + 18, batY + 3, 2, 4);
 
-          // 灵动岛
           ctx.fillStyle = '#000';
           ctx.beginPath();
           if (ctx.roundRect) ctx.roundRect((phoneW - 100) / 2, 12, 100, 28, 14);
           else ctx.rect((phoneW - 100) / 2, 12, 100, 28);
           ctx.fill();
 
-          // 标题
           ctx.fillStyle = isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)';
           ctx.font = '600 ' + titleSize + 'px "Noto Serif SC", "Songti SC", "SimSun", serif';
           fillTextWithSpacing(ctx, titleH1, phoneW / 2 + titleMarginLeft, 120, titleSpacing, 'center');
@@ -475,7 +483,6 @@
           ctx.font = '12px "Inter", -apple-system, sans-serif';
           fillTextWithSpacing(ctx, titleP, phoneW / 2, 148, pSpacing, 'center');
 
-          // 八角形路径辅助函数
           function drawOctagon(x, y, w, h) {
             var oct = 0.293;
             ctx.beginPath();
@@ -490,7 +497,6 @@
             ctx.closePath();
           }
 
-          // 绘制主卡（左侧和右侧主卡共用），修复字号为 30px / 12px
           function drawMainOctagon(cx, cy, c) {
             var cardW = 180;
             var cardH = 180;
@@ -511,15 +517,14 @@
             ctx.stroke();
             
             ctx.fillStyle = c.color;
-            
             ctx.font = '12px "Noto Serif SC", serif';
             fillTextWithSpacing(ctx, c.subtitle, cx + cardW / 2, cy + 52, 4, 'center');
             
-            // 修复：原 CSS 是 30px，这里必须同步为 30px
-            ctx.font = '600 30px "Playfair Display", "Noto Serif SC", serif';
-            fillTextWithSpacing(ctx, c.mainTitle, cx + cardW / 2, cy + 94, 6, 'center');
+            // Canvas 绘制使用同样的动态字号
+            var tStyle = getCardTitleStyle(c.mainTitle);
+            ctx.font = '600 ' + tStyle.fs + 'px "Playfair Display", "Noto Serif SC", serif';
+            fillTextWithSpacing(ctx, c.mainTitle, cx + cardW / 2, cy + 94, tStyle.ls, 'center');
             
-            // 修复：原 CSS 是 12px，这里必须同步为 12px
             ctx.font = '12px "Inter", -apple-system, sans-serif';
             var lines = c.info.split('\n');
             fillTextWithSpacing(ctx, lines[0] || '', cx + cardW / 2, cy + 132, 1, 'center');
@@ -528,7 +533,6 @@
           }
 
           if (targetId === 'co-phone-left') {
-            // ---------------- 左侧：两个八角卡片 ----------------
             var cards = Array.from(targetEl.querySelectorAll('.cp-card')).map(function (card) {
               return {
                 bg: card.style.backgroundColor,
@@ -549,7 +553,6 @@
             });
 
           } else {
-            // ---------------- 右侧：主色八角 + 抽屉色卡 ----------------
             var mainCardEl = targetEl.querySelector('.cp-main-card-wrapper .cp-card');
             if (mainCardEl) {
               var mainC = {
@@ -565,9 +568,8 @@
               drawMainOctagon(cx, cy, mainC);
             }
 
-            // 画抽屉
             var drawerEls = Array.from(targetEl.querySelectorAll('.cp-drawer'));
-            var drawerY = 200 + 180 + 30; // 严格留出 30px 空间
+            var drawerY = 200 + 180 + 30;
             var drawerW = 240;
             var drawerH = 46;
             var drawerGap = 8;
@@ -604,7 +606,6 @@
               ctx.shadowOffsetY = 4;
               ctx.fill();
               
-              // 左边高光层
               ctx.shadowColor = 'transparent';
               ctx.save();
               ctx.clip();
@@ -612,7 +613,6 @@
               ctx.fillRect(dx, drawerY, 6, drawerH);
               ctx.restore();
               
-              // 文案
               ctx.fillStyle = color;
               ctx.font = '600 15px "Noto Serif SC", serif';
               ctx.textAlign = 'left';
@@ -628,14 +628,12 @@
             });
           }
 
-          // 底部文字
           ctx.fillStyle = isDark ? '#FFF' : '#111';
           ctx.font = '12px "Inter", -apple-system, sans-serif';
           fillTextWithSpacing(ctx, footer, phoneW - 20, phoneH - 20, 0, 'right');
 
-          ctx.restore(); // 结束裁剪
+          ctx.restore();
 
-          // 外圈黑边
           ctx.lineWidth = 10;
           ctx.strokeStyle = '#111';
           ctx.beginPath();
@@ -643,7 +641,6 @@
           else ctx.rect(-5, -5, phoneW + 10, phoneH + 10);
           ctx.stroke();
 
-          // 下载
           var a = document.createElement('a');
           a.href = canvas.toDataURL('image/png');
           a.download = targetId === 'co-phone-left' ? '默认配色.png' : '衍生配色.png';
