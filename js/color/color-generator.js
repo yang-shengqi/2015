@@ -22,13 +22,28 @@
     var baseH = b.h;
     var baseL = b.L;
 
-    // 动态计算，保证视觉舒服，且不会彻底变黑
+    var L1 = Math.min(baseL + 0.35, 0.97);
+    var L2 = Math.min(baseL + 0.15, 0.85);
+    
+    // 👇 防倒挂补丁 1：如果主色极亮，L2 被压得比主色还暗，就强制取中间值
+    if (L2 <= baseL) {
+      L2 = baseL + (L1 - baseL) * 0.5;
+    }
+
+    var L4 = Math.max(baseL - 0.15, 0.25);
+    var L5 = Math.max(baseL - 0.35, 0.15);
+
+    // 👇 防倒挂补丁 2：如果主色极暗，L4 被抬得比主色还亮，就强制取中间值
+    if (L4 >= baseL) {
+      L4 = baseL - (baseL - L5) * 0.5;
+    }
+
     return [
-      { L: Math.min(baseL + 0.35, 0.95), C: baseC * 0.3, h: baseH },  // 90% 附近
-      { L: Math.min(baseL + 0.15, 0.85), C: baseC * 0.6, h: baseH },  // 70% 附近
-      { L: baseL, C: baseC, h: baseH },                               // 主色
-      { L: Math.max(baseL - 0.15, 0.25), C: baseC * 0.8, h: baseH },  // 30% 附近
-      { L: Math.max(baseL - 0.35, 0.15), C: baseC * 0.5, h: baseH }   // 10% 附近
+      { L: L1, C: baseC * 0.3, h: baseH },
+      { L: L2, C: baseC * 0.6, h: baseH },
+      { L: baseL, C: baseC, h: baseH },
+      { L: L4, C: baseC * 0.8, h: baseH },
+      { L: L5, C: baseC * 0.5, h: baseH }
     ].map(function(o) {
       return C.oklchToRgb(o);
     });
@@ -90,9 +105,11 @@
     // 👇 2. 准备第一行色卡
     // ==========================================
     if (state.hasImage && state.baseImageColors && state.baseImageColors.length > 0) {
+      var raw = state.baseImageColors;
+      if (raw.length >= 3) {
+        state.baseImageColors = [raw[1], raw[2], raw[0], raw[3], raw[4]];
+      }
       baseColorsRgb = state.baseImageColors.map(function(c) { return hexToRgb(c.hex); });
-      baseColorsRgb[0] = mainBaseColor; 
-      if (baseColorsRgb.length >= 3) baseColorsRgb[2] = mainBaseColor; 
     } else {
       baseColorsRgb = generateTints(mainBaseColor); 
       if (baseColorsRgb.length >= 3) baseColorsRgb[2] = mainBaseColor; 
@@ -157,9 +174,10 @@
     var monoPcts = [98, 75, 50, 30, 5];
 
     if (ruleName === 'mono') {
-        generatedColors = monoPcts.map(function(pct) {
-            var L = C.clamp(baseOklch.L + (50 - pct) / 100, 0.05, 0.95);
-            return C.oklchToRgb({ L: L, C: 0, h: baseOklch.h });
+        // 👇 直接读取上面第一行的 5 个颜色，把彩度清零（C: 0），明度原样保留
+        generatedColors = baseColorsRgb.map(function(rgb) {
+            var o = C.rgbToOklch(rgb);
+            return C.oklchToRgb({ L: o.L, C: 0, h: o.h });
         });
     } else {
         var offsets = [];
@@ -199,7 +217,10 @@
       var labelPrefix = '';
 
       if (ruleName === 'mono') {
-        labelPrefix = t('monoPct') + monoPcts[index] + '%';
+        // 👇 读取当前色块的真实明度（L值），换算成真实灰度百分比
+        var actualL = C.rgbToOklch(finalRgb).L;
+        var actualGrayPct = Math.round((1 - actualL) * 100);
+        labelPrefix = t('monoPct') + actualGrayPct + '%';
       } else {
         if (isMain) {
           labelPrefix = t('labelPrimary') + ' ( ' + t('actualHue') + ' ' + currentHue + '° )';
@@ -218,8 +239,9 @@
         }
       }
 
-      finalName = labelPrefix + '<br>' + finalName + ' - ' + currentLibName;
-      cssRuleNames.push(labelPrefix + ' ' + finalName + ' - ' + currentLibName);
+      var pureName = finalName;
+      finalName = labelPrefix + '<br>' + pureName + ' - ' + currentLibName;
+      cssRuleNames.push(labelPrefix + ' ' + pureName + ' - ' + currentLibName);
       
       ruleColors.push(finalRgb);
       ruleNames.push(finalName);

@@ -98,7 +98,8 @@
       view.setUint8(off++, 0x53); // S
       view.setUint8(off++, 0x45); // E
       view.setUint8(off++, 0x46); // F
-      view.setUint16(off, 1, false); off += 2; // 版本 1.0
+      view.setUint16(off, 1, false); off += 2; // 主版本号 1
+      view.setUint16(off, 0, false); off += 2; // 👈 加上这行：次版本号 0
       view.setUint32(off, blocks.length, false); off += 4; // 色块数量
 
       // 2. 写入每个色块

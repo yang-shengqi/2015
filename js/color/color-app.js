@@ -239,6 +239,25 @@
     state.ruleColors = result.ruleColors;
     state.ruleNames = result.ruleNames;
 
+    // 👇 先同步数据，再画图！
+    if (state.genColors && state.genColors.length >= 3) {
+        var finalMainRgb = state.genColors[2]; 
+        state.mainRgb = finalMainRgb; 
+        var finalHex = rgbToHex(finalMainRgb);
+        
+        if ($('ci')) $('ci').value = finalHex.toLowerCase(); 
+        if ($('ti')) $('ti').value = finalHex.toUpperCase(); 
+        
+        // 注意：灰度模式下，第二行第一格是纯灰，绝不能强制变主色！
+        if (ruleName !== 'mono' && state.ruleColors && state.ruleColors.length > 0) {
+            state.ruleColors[0] = finalMainRgb;
+        }
+
+        if (document.querySelector('.co-root')) {
+            document.querySelector('.co-root').style.setProperty('--co-accent', finalHex);
+        }
+    }
+
     if (!keepStops) {
       state.gradientStops = state.genColors.map(function (c, i) {
         return { hex: rgbToHex(c), pos: Math.round(i * 100 / (state.genColors.length - 1)) };
@@ -268,30 +287,6 @@
         R.renderToneScale(state.mainRgb);
     }
 
-    // 🔥🔥🔥 终极同步：强制让左上角、第一行中间、第二行第一个，全部统一！
-    if (state.genColors && state.genColors.length >= 3) {
-        // 1. 死抓第一行中间那个真实的颜色（不管是人工选的莫兰迪，还是瞎算的）
-        var finalMainRgb = state.genColors[2]; 
-        
-        // 2. 强制覆盖全局主色
-        state.mainRgb = finalMainRgb; 
-        
-        var finalHex = rgbToHex(finalMainRgb);
-        
-        // 3. 强行修改左上角的框
-        if ($('ci')) $('ci').value = finalHex.toLowerCase(); 
-        if ($('ti')) $('ti').value = finalHex.toUpperCase(); 
-        
-        // 4. 强行让第二行第一个卡，也绝对等于这个颜色
-        if (state.ruleColors && state.ruleColors.length > 0) {
-            state.ruleColors[0] = finalMainRgb;
-        }
-
-        // 5. 更新UI的CSS变量
-        if (document.querySelector('.co-root')) {
-            document.querySelector('.co-root').style.setProperty('--co-accent', finalHex);
-        }
-    }
     // 🔥 终极联动：把第一行中间的颜色，强行同步给首屏那个渐变条！
     if (state.genColors && state.genColors.length >= 3) {
         var finalMainColor = state.genColors[2];

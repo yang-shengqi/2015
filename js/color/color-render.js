@@ -262,7 +262,14 @@ function renderContrast(genColors, ruleColors) {
     else if (lib === 'jp') palette = window.CO_Names.JP_PALETTE;
     else if (lib === 'cyber') palette = window.CO_Names.CYBER_PALETTE;
     
-    var namePool = palette || window.CO_Names.CN_PALETTE;
+    var namePool = palette;
+    if (!namePool) {
+        namePool = [];
+        if (window.CO_Names.CN_PALETTE) namePool = namePool.concat(window.CO_Names.CN_PALETTE);
+        if (window.CO_Names.JP_PALETTE) namePool = namePool.concat(window.CO_Names.JP_PALETTE);
+        if (window.CO_Names.MORANDI_PALETTE) namePool = namePool.concat(window.CO_Names.MORANDI_PALETTE);
+        if (window.CO_Names.CYBER_PALETTE) namePool = namePool.concat(window.CO_Names.CYBER_PALETTE);
+    }
     var usedNamesForList = new Set();
 
     var list = $('ratioList');

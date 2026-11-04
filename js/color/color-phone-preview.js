@@ -239,17 +239,9 @@
       var lA = safeColor(colors[0]);
       var lB = safeColor(colors[2]);
       
-      var isLA_Light = C.luminance(lA) > 0.6;
-      var isLB_Light = C.luminance(lB) > 0.6;
-      var themeClassL = (isLA_Light && isLB_Light) ? 'cp-theme-light' : 'cp-theme-dark';
-
-      // ==========================================
-      // 终极防白字补丁：如果左边背景特别浅，强制变黑！
-      // ==========================================
-      var leftTextColor = '#FFFFFF'; 
-      if (lA.r > 180 && lA.g > 180 && lA.b > 180) {
-          leftTextColor = '#111111'; // 只要 RGB 三个值都大于 180，百分百是浅色，直接用黑字！
-      }
+      // 👇 直接调用标准算法，算出最适合背景的文字颜色（黑或白）
+      var leftTextColor = C.textOn(lA); 
+      var themeClassL = (leftTextColor === '#111111') ? 'cp-theme-light' : 'cp-theme-dark';
 
       var nameL1 = extractName(genNames[0]);
       var nameL2 = extractName(genNames[2]);
