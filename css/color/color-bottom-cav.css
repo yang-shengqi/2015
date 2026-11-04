@@ -1,6 +1,5 @@
 /* ============================================================
- * color-sticky-controls.css —— 控制行底部悬浮条
- * 参考顶部导航条：胶囊形、拟物凹陷底、内容整体居中、宽度自适应
+ * color-bottom-cav.css —— 控制行底部悬浮条 (净化版)
  * ============================================================ */
 
 .co-sticky-bar {
@@ -21,6 +20,7 @@
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+  /* 居中动画 */
   transform: translate(-50%, 18px);
   transition:
     opacity .28s cubic-bezier(.22, .61, .36, 1),
@@ -45,9 +45,8 @@
   gap: 10px;
   margin-bottom: 0;
 }
-.co-sticky-bar .co-controls::-webkit-scrollbar { display: none; }
 
-/* 去掉所有小标题（主色 / 配色规则 / 色库限制 / 空占位） */
+/* 去掉所有小标题 */
 .co-sticky-bar .co-field > span { display: none; }
 
 .co-sticky-bar .co-field {
@@ -87,61 +86,23 @@
   flex-shrink: 0;
 }
 
-/* ---------- 色库气泡（克隆后 id 被移除，改用 .co-libs） ---------- */
-.co-sticky-bar .co-libs { overflow: visible; }
-.co-sticky-bar .co-libs label { position: relative; }
-
+/* 禁用原生 CSS 气泡 */
+.co-sticky-bar [data-tip]::after,
 .co-sticky-bar .co-libs label::after {
-  content: attr(data-tip);
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 50%;
-  transform: translateX(-50%) translateY(4px);
-  background: var(--nm-bg);
-  color: var(--nm-text-2);
-  font-size: 11px;
-  font-family: var(--nm-font);
-  font-weight: 400;
-  padding: 6px 10px;
-  border-radius: var(--nm-r-sm);
-  box-shadow: var(--nm-out-sm);
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity .2s ease, transform .2s ease, visibility .2s;
-  z-index: 10000;
-  letter-spacing: 0;
-}
-.co-sticky-bar .co-libs label:hover::after {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
+  display: none !important;
+  content: none !important;
 }
 
-/* 悬浮条内的取色面板向上弹出 */
-.co-sticky-bar .co-cp-panel {
-  top: auto;
-  bottom: calc(100% + 14px); /* 向上偏移，与悬浮条拉开距离 */
-  left: 0;
-  z-index: 10000;
-  box-shadow: var(--nm-out);
-}
-
-/* 小屏允许换行，防止内容过宽被裁切 */
-@media (max-width: 900px) {
-  .co-sticky-bar .co-controls {
-    flex-wrap: wrap;
-  }
-}
-
-/* ---------- 小屏 ---------- */
+/* 小屏 */
 @media (max-width: 900px) {
   .co-sticky-bar {
     padding: 7px 10px;
     max-width: calc(100vw - 20px);
   }
-  .co-sticky-bar .co-controls { gap: 8px; }
+  .co-sticky-bar .co-controls { 
+    flex-wrap: wrap; 
+    gap: 8px; 
+  }
   .co-sticky-bar .co-seg span {
     height: 22px;
     padding: 0 8px;
@@ -156,4 +117,13 @@
 
 @media (prefers-reduced-motion: reduce) {
   .co-sticky-bar { transition: none; }
+}
+
+/* ===== 终极绝杀：干掉悬浮条内所有的 CSS 伪元素 ===== */
+.co-sticky-bar *::before,
+.co-sticky-bar *::after {
+  display: none !important;
+  content: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
 }
