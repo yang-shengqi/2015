@@ -22,7 +22,14 @@
   }
 
   function matchColorInPalette(rgb, palette, usedSet) {
-    if (!palette) palette = global.CO_Names.CN_PALETTE;
+        // 👇 如果没传 palette（无限制模式），自动把 4 大色库全部合并！全库找名字！
+    if (!palette) {
+        palette = [];
+        if (global.CO_Names.CN_PALETTE) palette = palette.concat(global.CO_Names.CN_PALETTE);
+        if (global.CO_Names.JP_PALETTE) palette = palette.concat(global.CO_Names.JP_PALETTE);
+        if (global.CO_Names.MORANDI_PALETTE) palette = palette.concat(global.CO_Names.MORANDI_PALETTE);
+        if (global.CO_Names.CYBER_PALETTE) palette = palette.concat(global.CO_Names.CYBER_PALETTE);
+    }
     if (!rgb || !palette.length) return { rgb: rgb, name: "未知" };
 
     var lab = rgbToOklab(rgb.r, rgb.g, rgb.b);

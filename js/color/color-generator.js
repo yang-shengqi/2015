@@ -44,7 +44,15 @@
     var genColors = [], genNames = [];
     var ruleColors = [], ruleNames = [];
     var cssNames = [], cssRuleNames = [];
-    var namePool = palette || global.CO_Names.CN_PALETTE;
+    // 无限制模式下，把 4 个库合并，全库找名字！
+    var namePool = palette;
+    if (!namePool) {
+        namePool = [];
+        if (global.CO_Names.CN_PALETTE) namePool = namePool.concat(global.CO_Names.CN_PALETTE);
+        if (global.CO_Names.JP_PALETTE) namePool = namePool.concat(global.CO_Names.JP_PALETTE);
+        if (global.CO_Names.MORANDI_PALETTE) namePool = namePool.concat(global.CO_Names.MORANDI_PALETTE);
+        if (global.CO_Names.CYBER_PALETTE) namePool = namePool.concat(global.CO_Names.CYBER_PALETTE);
+    }
 
     var libChecked = document.querySelector('input[name="lib"]:checked');
     var libVal = libChecked ? libChecked.value : 'none';
@@ -99,17 +107,14 @@
       
       var finalName = t('noStandardName');
 
-      if (palette && palette.length > 0) {
-          var match = matchColorInPalette(finalRgb, namePool, usedNames);
-          if (match && match.name !== t('noStandardName') && match.name !== '未知') {
-            finalName = match.name;
-            if (match.isDuplicate || parseFloat(match.similarity) < 100) {
-               finalName += ' (' + match.similarity + ')';
-            }
-            usedNames.add(match.name); 
-          }
-      } else {
-          finalName = t('noStandardName');
+      // 🔥 放开拦截，全库找名字
+      var match = matchColorInPalette(finalRgb, namePool, usedNames);
+      if (match && match.name !== t('noStandardName') && match.name !== '未知') {
+        finalName = match.name;
+        if (match.isDuplicate || parseFloat(match.similarity) < 100) {
+           finalName += ' (' + match.similarity + ')';
+        }
+        usedNames.add(match.name); 
       }
       
       genColors.push(finalRgb);
@@ -180,18 +185,14 @@
       
       var isMain = (ruleName === 'mono' && index === 2) || (ruleName !== 'mono' && index === 0);
 
-      // 🔥 再次加上色库拦截，无限制不给名字！
-      if (palette && palette.length > 0) {
-          var matchObj = matchColorInPalette(finalRgb, namePool, usedNames);
-          if (matchObj && matchObj.name !== t('noStandardName') && matchObj.name !== '未知') {
-            finalName = matchObj.name;
-            if (matchObj.isDuplicate || parseFloat(matchObj.similarity) < 100) {
-               finalName += ' (' + matchObj.similarity + ')';
-            }
-            usedNames.add(matchObj.name);
-          }
-      } else {
-          finalName = t('noStandardName');
+      // 🔥 放开拦截，全库找名字
+      var matchObj = matchColorInPalette(finalRgb, namePool, usedNames);
+      if (matchObj && matchObj.name !== t('noStandardName') && matchObj.name !== '未知') {
+        finalName = matchObj.name;
+        if (matchObj.isDuplicate || parseFloat(matchObj.similarity) < 100) {
+           finalName += ' (' + matchObj.similarity + ')';
+        }
+        usedNames.add(matchObj.name);
       }
 
       var currentHue = Math.round(C.rgbToOklch(finalRgb).h) || 0;
