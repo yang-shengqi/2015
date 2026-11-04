@@ -1,5 +1,5 @@
 /* ============================================================
- * color-phone-preview.js —— 纯逻辑渲染版 (导出修复最终版)
+ * color-phone-preview.js —— 完整最终版 (彻底修复左侧文字颜色)
  * ============================================================ */
 (function (global) {
   'use strict';
@@ -197,8 +197,8 @@
           <defs>
             <filter id="shadowBlur"><feGaussianBlur stdDeviation="3" /></filter>
             <linearGradient id="fadeOut" x1="0%" y1="100%" x2="0%" y2="0%">
-              <stop offset="0%" stop-color="rgba(0,0,0,0.4)" />
-              <stop offset="70%" stop-color="rgba(0,0,0,0.15)" />
+              <stop offset="0%" stop-color="rgba(0,0,0,0.35)" />
+              <stop offset="70%" stop-color="rgba(0,0,0,0.1)" />
               <stop offset="100%" stop-color="rgba(0,0,0,0)" />
             </linearGradient>
           </defs>
@@ -238,11 +238,18 @@
       // --- 左侧 ---
       var lA = safeColor(colors[0]);
       var lB = safeColor(colors[2]);
+      
       var isLA_Light = C.luminance(lA) > 0.6;
       var isLB_Light = C.luminance(lB) > 0.6;
       var themeClassL = (isLA_Light && isLB_Light) ? 'cp-theme-light' : 'cp-theme-dark';
 
-      var colorStatusL = C.luminance(lA) > 0.5 ? '#111111' : '#FFFFFF';
+      // ==========================================
+      // 终极防白字补丁：如果左边背景特别浅，强制变黑！
+      // ==========================================
+      var leftTextColor = '#FFFFFF'; 
+      if (lA.r > 180 && lA.g > 180 && lA.b > 180) {
+          leftTextColor = '#111111'; // 只要 RGB 三个值都大于 180，百分百是浅色，直接用黑字！
+      }
 
       var nameL1 = extractName(genNames[0]);
       var nameL2 = extractName(genNames[2]);
@@ -255,7 +262,7 @@
           <div class="right" style="background:${C.rgbToHex(lB)};"></div>
         </div>
         ${svgShadow}
-        <div class="cp-status" style="color:${colorStatusL};">
+        <div class="cp-status" style="color:${leftTextColor};">
           <div>${timeStr}</div>
           <div style="display:flex; align-items:center;">
              <div class="cp-sig">
@@ -270,8 +277,8 @@
           </div>
         </div>
         <div class="cp-title">
-          <h1 style="font-size: ${tInfoL.fs}px; letter-spacing: ${tInfoL.ls}px; margin-left: ${tInfoL.ls}px; color: ${isLA_Light ? '#000000' : '#FFFFFF'};">${titleLeft}</h1>
-          <p style="letter-spacing: ${lsLeft}; color: ${isLA_Light ? '#000000' : '#FFFFFF'}; opacity: 0.7;">${pLeft}</p>
+          <h1 style="font-size: ${tInfoL.fs}px; letter-spacing: ${tInfoL.ls}px; margin-left: ${tInfoL.ls}px; color: ${leftTextColor};">${titleLeft}</h1>
+          <p style="letter-spacing: ${lsLeft}; color: ${leftTextColor}; opacity: 0.7;">${pLeft}</p>
         </div>
         <div class="cp-cards cp-grid-2">
           <div class="card-wrapper"><div class="cp-card" style="background:${C.rgbToHex(lA)}; color:${C.textOn(lA)};"><div class="subtitle">${subtitleText}</div><div class="main-title" style="font-size: ${styleL1.fs}px; letter-spacing: ${styleL1.ls}px; margin-left: ${styleL1.ls}px;">${nameL1}</div><div class="info">RGB:${getRgbStr(lA)}<br>${C.rgbToHex(lA)}</div></div></div>
@@ -299,8 +306,6 @@
       var drawers = rCards.slice(1);
       var textR = C.textOn(rBg);
       var themeClassR = (textR === '#111111') ? 'cp-theme-light' : 'cp-theme-dark';
-
-      var colorStatusR = C.luminance(rBg) > 0.5 ? '#111111' : '#FFFFFF';
 
       var nameR = extractName(genNames[2]);
       var styleR = getCardTitleStyle(nameR);
@@ -333,7 +338,7 @@
           <div class="left" style="background:${hexBg}; width: 100%;"></div>
         </div>
         ${svgShadow}
-        <div class="cp-status" style="color:${colorStatusR};">
+        <div class="cp-status" style="color:${textR};">
           <div>${timeStr}</div>
           <div style="display:flex; align-items:center;">
              <div class="cp-sig">
@@ -369,7 +374,7 @@
   }
 
   // ==========================================
-  // 纯原生 Canvas 绘制
+  // 纯原生 Canvas 绘制 (完美同步网页版)
   // ==========================================
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('.cp-download-btn');
@@ -389,8 +394,8 @@
         var bgRight = bgRightEl ? bgRightEl.style.backgroundColor : bgLeft;
         
         var bgLeftRgb = C.hexToRgb(bgLeft);
-        var isLeftLight = C.luminance(bgLeftRgb) > 0.5;
-        var isDark = !isLeftLight;
+        var canvasTextColor = C.textOn(bgLeftRgb); // 和网页端完全同步
+        var isDark = !(canvasTextColor === '#111111');
 
         var h1El = targetEl.querySelector('.cp-title h1');
         var titleH1 = h1El.textContent;
@@ -472,19 +477,13 @@
           ctx.closePath();
           ctx.clip();
 
-          // 1. 填充背景
           ctx.fillStyle = bgLeft;
           ctx.fillRect(0, 0, phoneW / 2, phoneH);
           ctx.fillStyle = bgRight;
           ctx.fillRect(phoneW / 2, 0, phoneW / 2, phoneH);
           
-          // 2. 绘制左侧大树
           if (branchImg) {
             ctx.drawImage(branchImg, 0, 0, phoneW * 0.85, phoneH);
-          }
-
-          // 3. 绘制右侧倒影树（完美还原网页效果）
-          if (branchImg) {
             ctx.save();
             ctx.translate(phoneW * 0.9, phoneH * 0.95); 
             ctx.rotate(Math.PI); 
@@ -492,8 +491,6 @@
             ctx.drawImage(branchImg, -phoneW * 0.65, -phoneH * 0.9, phoneW * 0.85, phoneH);
             ctx.restore();
           }
-
-          var canvasTextColor = isLeftLight ? '#111111' : '#FFFFFF';
 
           ctx.fillStyle = canvasTextColor;
           ctx.font = '600 14px "Inter", -apple-system, sans-serif';
@@ -523,11 +520,19 @@
           else ctx.rect((phoneW - 100) / 2, 12, 100, 28);
           ctx.fill();
 
-          ctx.fillStyle = isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)';
+          var titleColor = (targetId === 'co-phone-left') 
+            ? (canvasTextColor === '#111111' ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.9)')
+            : (isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)');
+
+          ctx.fillStyle = titleColor;
           ctx.font = '600 ' + titleSize + 'px "Noto Serif SC", "Songti SC", "SimSun", serif';
           fillTextWithSpacing(ctx, titleH1, phoneW / 2 + titleMarginLeft, 120, titleSpacing, 'center');
           
-          ctx.fillStyle = isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)';
+          var pColor = (targetId === 'co-phone-left')
+            ? (canvasTextColor === '#111111' ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)')
+            : (isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)');
+
+          ctx.fillStyle = pColor;
           ctx.font = '12px "Inter", -apple-system, sans-serif';
           fillTextWithSpacing(ctx, titleP, phoneW / 2, 148, pSpacing, 'center');
 
