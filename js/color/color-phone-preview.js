@@ -1,19 +1,18 @@
 /* ============================================================
- * color-phone-preview.js —— 最终定稿版
- * 纯 Canvas 渲染，绝对固定坐标，预览/导出完全一致，阴影置顶
+ * color-phone-preview.js —— 绝对纯净版
+ * 无刷新、无按钮、无监听、无删除逻辑。只负责 Canvas 渲染与导出。
  * ============================================================ */
 (function (global) {
   'use strict';
 
   var C = global.CO_Color;
 
-  // 统一的尺寸与坐标常量（绝不乱算）
   var L = {
     W: 320, H: 694,
     PAD: 40,
     EXPORT_SCALE: 2,
     CARD_SIZE: 180,
-    DRAWER_W: 180,
+    DRAWER_W: 220,
     DRAWER_H: 46,
     DRAWER_R: 12
   };
@@ -100,30 +99,21 @@
     return 2;
   }
 
-  /* ================= 枝影 SVG（彻底消除硬边，纯色+大模糊） ================= */
+  /* ================= 2. 枝影 SVG ================= */
   var BRANCH_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 694" preserveAspectRatio="none">' +
     '<defs>' +
-    // 👇 关键修复：滤镜向外扩张 50%，给模糊留出充足空间
     '<filter id="treeBlur" x="-50%" y="-50%" width="300%" height="300%">' +
     '<feGaussianBlur stdDeviation="8" />' + 
     '</filter>' +
     '</defs>' +
-
-    // 👇 translate(左右, 上下) 控制移动；rotate(角度, 中心X, 中心Y) 控制旋转
-    // 左右：负数向左，正数向右；上下：负数向上，正数向下；角度：正数顺时针
-    '<g filter="url(#treeBlur)" fill="rgba(0,0,0,0.28)" transform="translate(-20, 0) rotate(10, 450, 400)">' +
-    
-    // ================= 左侧树枝（原封不动） =================
+    '<g filter="url(#treeBlur)" fill="rgba(0,0,0,0.28)" transform="translate(-60, 0) rotate(10, 450, 400)">' +
     '<path d="M -30 720 C 80 500 140 300 220 -20 L 260 -20 C 180 300 120 500 10 720 Z" />' +
     '<path d="M 90 450 C 40 380 10 300 -20 200 L 0 190 C 30 290 60 370 110 430 Z" />' +
     '<path d="M 140 300 C 180 250 240 200 280 150 C 220 220 160 270 130 320 Z" />' +
-
     '<path d="M -20 720 C 80 500 140 300 220 -20 C 120 300 60 500 20 720 Z" />' +
     '<path d="M 210 50 C 240 20 280 -10 320 -30 L 320 -10 C 280 10 240 40 215 70 Z" />' +
     '<path d="M 60 600 C 100 580 150 550 190 520 L 195 535 C 150 565 100 595 65 615 Z" />' +
-    '<path d="M -20 -50 C 30 40 60 130 80 200 L 92 198 C 72 130 42 40 -10 -50 Z" transform="translate(0, 100)" />' +
-
-    
+    '<path d="M -20 -50 C 30 40 60 130 80 200 L 92 198 C 72 130 42 40 -10 -50 Z" transform="translate(0, 100)" />' +    
     '</g></svg>';
 
   var branchImg = null, branchLoaded = false, branchWaiters = [];
@@ -242,7 +232,6 @@
     roundRectPath(ctx, 0, 0, W, H, 40);
     ctx.clip();
 
-    // 1. 背景
     if (m.splitBg) {
       ctx.fillStyle = m.bgLeft;  ctx.fillRect(0, 0, W / 2, H);
       ctx.fillStyle = m.bgRight; ctx.fillRect(W / 2, 0, W / 2, H);
@@ -251,46 +240,51 @@
       ctx.fillRect(0, 0, W, H);
     }
 
-    // 2. 状态栏
-    drawStatus(ctx, m.statusColor, m.time, m.showIsland);
+    var isDarkText = m.titleColor === '#111111';
+    var shadowCol = isDarkText ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)';
 
-    // 3. 标题
+    ctx.save();
+    ctx.shadowColor = shadowCol; ctx.shadowBlur = 4;
+    drawStatus(ctx, m.statusColor, m.time, m.showIsland);
+    ctx.restore();
+
+    ctx.save();
+    ctx.shadowColor = shadowCol; ctx.shadowBlur = 4;
     ctx.fillStyle = m.titleColor;
     ctx.font = '600 ' + m.title.fs + 'px ' + F_DISPLAY;
     fillRun(ctx, m.title.text, W / 2, 120, m.title.ls, 'center');
+    ctx.restore();
 
     ctx.save();
+    ctx.shadowColor = shadowCol; ctx.shadowBlur = 4;
     ctx.globalAlpha = 0.7;
     ctx.fillStyle = m.subColor;
     ctx.font = '12px ' + F_SANS;
     fillRun(ctx, m.sub.text, W / 2, 148, m.sub.ls, 'center');
     ctx.restore();
 
-    // 4. 卡片（按模型里写死的坐标画）
     m.items.forEach(function (it) {
+      ctx.save();
+      ctx.shadowColor = it.color === '#111111' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)';
+      ctx.shadowBlur = 3;
       if (it.type === 'octagon') drawOctagonCard(ctx, it.x, it.y, it);
       else drawDrawer(ctx, it.x, it.y, it);
+      ctx.restore();
     });
 
-    // 5. 页脚
+    ctx.save();
+    ctx.shadowColor = shadowCol; ctx.shadowBlur = 4;
     ctx.fillStyle = m.footerColor;
     ctx.font = '12px ' + F_SANS;
     fillRun(ctx, m.footerText, W - 20, H - 20, 0, 'right');
+    ctx.restore();
 
-    // 6. 枝影（必须在所有卡片/文字之后，即最上层）
     if (branchImg) {
-      ctx.drawImage(branchImg, 0, 0, W * 0.85, H);
-      ctx.save();
-      ctx.translate(W * 0.9, H * 0.95);
-      ctx.rotate(Math.PI);
-      ctx.scale(0.7, 0.7);
-      ctx.drawImage(branchImg, -W * 0.65, -H * 0.9, W * 0.85, H);
-      ctx.restore();
+      ctx.drawImage(branchImg, 0, 0, W, H);
     }
 
-    ctx.restore(); // 结束裁剪
+    ctx.restore(); 
 
-    // 7. 最外层黑框
     ctx.save();
     ctx.lineWidth = 10;
     ctx.strokeStyle = '#111';
@@ -298,8 +292,8 @@
     ctx.stroke();
     ctx.restore();
   }
-
-  /* ================= 5. 构建数据模型（坐标全写死） ================= */
+  
+  /* ================= 5. 构建数据模型 ================= */
 
   function extractName(html) {
     if (!html) return '无';
@@ -338,7 +332,6 @@
       title: { text: texts.titleLeft, fs: texts.tInfoL.fs, ls: texts.tInfoL.ls },
       sub: { text: texts.pLeft, ls: texts.lsLeft },
       items: [
-        // 左侧：第 1 个 Y=200，第 2 个 Y=410（间距 30px）
         { type: 'octagon', x: 70, y: 200, bg: C.rgbToHex(a), color: C.textOn(a), subtitle: texts.subtitle, mainTitle: extractName(genNames[0]), info: ['RGB:' + rgbStr(a), C.rgbToHex(a)] },
         { type: 'octagon', x: 70, y: 410, bg: C.rgbToHex(b), color: C.textOn(b), subtitle: texts.subtitle, mainTitle: extractName(genNames[2]), info: ['RGB:' + rgbStr(b), C.rgbToHex(b)] }
       ],
@@ -364,7 +357,6 @@
       cards = [safeColor(colors[0]), safeColor(colors[1])];
     }
 
-    // 右侧：第 1 个八角 Y=200（左对齐），第 1 个抽屉 Y=400（间距 20px），抽屉间距 15px
     var items = [{
       type: 'octagon', x: 70, y: 200,
       bg: C.rgbToHex(main), color: C.textOn(main),
@@ -375,7 +367,7 @@
     var startY = 400;
     cards.slice(1).forEach(function (c, idx) {
       items.push({
-        type: 'drawer', x: 70, y: startY + idx * (L.DRAWER_H + 15),
+        type: 'drawer', x: 50, y: startY + idx * (L.DRAWER_H + 15),
         bg: C.rgbToHex(c), color: C.textOn(c),
         title: extractName(ruleNames[idx + 1]), hex: C.rgbToHex(c)
       });
@@ -433,7 +425,7 @@
       var ctx = canvas.getContext('2d');
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.scale(dpr, dpr); // 逻辑坐标始终是 320x694
+      ctx.scale(dpr, dpr);
       drawPhone(ctx, model, branchImg);
     }
 
@@ -484,7 +476,7 @@
         lsLeft: getEnSpacing(pLeft),
         lsRight: getEnSpacing(pRight),
         subtitle: subtitle,
-        footerText: isEn ? "WeChat: Jiushu's Vision" : '公众号：九叔的视野',
+        footerText: isEn ? "Wechat: Jiushu's Vision" : '公众号：九叔的视野',
         time: nowTime()
       };
 
@@ -512,7 +504,6 @@
     ctx.fillRect(0, 0, cw, ch);
     ctx.translate(pad, pad);
     
-    // 导出调用与预览完全相同的函数，保证分毫不差
     drawPhone(ctx, model, branchImg);
 
     var a = document.createElement('a');
