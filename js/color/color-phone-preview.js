@@ -205,7 +205,7 @@
 
       // --- 左侧 ---
       var lA = safeColor(colors[0]);
-      var lB = safeColor(colors[1]);
+      var lB = safeColor(colors[2]);
       var isLA_Light = C.luminance(lA) > 0.6;
       var isLB_Light = C.luminance(lB) > 0.6;
       var themeClassL = (isLA_Light && isLB_Light) ? 'cp-theme-light' : 'cp-theme-dark';
@@ -244,10 +244,18 @@
         if (ruleName === 'square') rCards = ruleColors.slice(0, 4).map(safeColor);
         else if (ruleName === 'triad' || ruleName === 'split') rCards = ruleColors.slice(0, 3).map(safeColor);
         else if (ruleName === 'mono') rCards = ruleColors.slice(0, 5).map(safeColor);
-        else rCards = [safeColor(ruleColors[0]), safeColor(ruleColors[1] || ruleColors[0])];
+        else rCards = ruleColors.slice(0, 2).map(safeColor);
       } else {
         rCards = [safeColor(colors[0]), safeColor(colors[1])];
       }
+      
+      // 强制让主卡读取真正的 colors[0]
+      var mainC = safeColor(colors[0]);
+      
+      // 抽屉里排除掉主色，只留衍生色
+      var drawers = rCards.filter(function(c) {
+        return c.r !== mainC.r || c.g !== mainC.g || c.b !== mainC.b;
+      });
       
       var textR = C.textOn(rMain);
       var themeClassR = (textR === '#111111') ? 'cp-theme-light' : 'cp-theme-dark';
