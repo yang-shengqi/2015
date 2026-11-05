@@ -1799,3 +1799,9 @@
   --btn-pad: 0 14px;
   --btn-fs: 12.5px;
 }
+
+/* 主色标题旁的名字 */
+#mainColorName {
+  font-weight: 500; /* 比标题稍微粗一点点 */
+  color: var(--nm-text-3); /* 颜色稍微淡一点，有主次之分 */
+}
