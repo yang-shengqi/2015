@@ -44,20 +44,6 @@
     el.innerHTML = html;
   }
 
-  /* ---------- 明度阶梯 ---------- */
-  function renderToneScale(baseRgb) {
-    var el = $('toneScale'); if (!el) return;
-    var base = rgbToOklch(baseRgb), html = '';
-    for (var i = 1; i <= 9; i++) {
-      var pct = i * 10, L, Cc;
-      if (pct <= 50) { var t1 = pct / 50; L = 0.95 - t1 * (0.95 - base.L); Cc = t1 * base.C; }
-      else { var t2 = (pct - 50) / 50; L = base.L - t2 * (base.L - 0.25); Cc = base.C - t2 * (base.C * 0.7); }
-      var rgb = oklchToRgb({ L: L, C: Cc, h: base.h }), hex = rgbToHex(rgb);
-      html += '<div class="co-tone-block co-tip" style="--tone-bg:' + hex + ';--tone-text:' + textOn(rgb) + ';" data-action="copy-tone" data-hex="' + hex + '" data-tip="' + copyTip(hex) + '"><span>' + hex + '</span></div>';
-    }
-    el.innerHTML = html;
-  }
-
 /* ---------- 界面预览 ---------- */
   function renderPreview(colors, ruleColors, mainRgb) {
     var el = $('pv'); if (!el) return;
@@ -357,6 +343,15 @@ function renderContrast(genColors, ruleColors) {
         
         var match = window.CO_Filter.matchColorInPalette(c, namePool, usedNamesForList);
         var cName = match.name;
+        
+        // 🔥 新增：如果匹配到了颜色，且不是“无标准名称”，就拼上相似度
+        if (cName !== t('noStandardName') && cName !== '未知') {
+          if (match.isDuplicate || parseFloat(match.similarity) < 100) {
+            cName += ' (' + match.similarity + ')';
+          }
+        }
+
+        // 去重逻辑（放在拼接后缀之后，避免同名但不同相似度被误判）
         if (usedNamesForList.has(cName)) cName = cName + "·" + (idx + 1);
         usedNamesForList.add(cName);
 
@@ -365,6 +360,7 @@ function renderContrast(genColors, ruleColors) {
             '<div class="co-ratio-name">' + cName + '</div>' +
             '<div class="co-ratio-hex">' + c.hex + '</div>' +
           '</div>' +
+          // ... 下面代码不动 ...
           '<div class="nm-bar-track"><div class="nm-bar-fill" style="width:' + barW.toFixed(1) + '%;background:' + c.hex + ';"></div></div>' +
           '<div class="co-ratio-percent">' + label + '%</div>' +
         '</div>';

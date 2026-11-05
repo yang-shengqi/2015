@@ -84,8 +84,46 @@
 
 /* ---------------- 2. 核心算法 ---------------- */
     function getExpandedStops(stopsInput, skipSmooth) {
-      // 🔥 彻底删除 OKLab 插值计算！只返回你填写的原始色标，浏览器原生过渡。
-      return stopsInput.slice().sort(function (a, b) { return a.pos - b.pos; });
+      // 1. 先把色标按位置排好序
+      var sorted = stopsInput.slice().sort(function (a, b) { return a.pos - b.pos; });
+      
+      // 2. 检查是否勾选了“平滑过渡”
+      var smoothEl = $('g-smooth');
+      var isSmooth = smoothEl && smoothEl.checked;
+
+      // 3. 如果没勾选，或者正在拖拽（为了防止卡顿），直接返回原始色标
+      if (!isSmooth || skipSmooth) {
+        return sorted;
+      }
+
+      // 4. 执行 OKLab 平滑插值
+      var out = [];
+      for (var i = 0; i < sorted.length - 1; i++) {
+        var a = sorted[i];
+        var b = sorted[i + 1];
+        out.push(a); // 放入当前色标
+
+        var gap = b.pos - a.pos;
+        if (gap <= 1) continue; // 两个色标离得太近，没必要插值
+
+        // 每相隔 2% 插入一个补间色，既有平滑效果，又不会让浏览器渲染压力过大
+        var steps = Math.floor(gap / 2);
+        for (var s = 1; s < steps; s++) {
+          var t = s / steps;
+          var rgbA = C.hexToRgb(a.hex);
+          var rgbB = C.hexToRgb(b.hex);
+          
+          // 调用 color-math.js 里的 mixOklch
+          var mixed = C.mixOklch(rgbA, rgbB, t);
+          
+          out.push({ 
+            hex: C.rgbToHex(mixed), 
+            pos: a.pos + gap * t 
+          });
+        }
+      }
+      out.push(sorted[sorted.length - 1]); // 放入最后一个色标
+      return out;
     }
 
     function buildGradientCss(stops) {

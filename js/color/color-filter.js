@@ -30,7 +30,9 @@
         if (global.CO_Names.MORANDI_PALETTE) palette = palette.concat(global.CO_Names.MORANDI_PALETTE);
         if (global.CO_Names.CYBER_PALETTE) palette = palette.concat(global.CO_Names.CYBER_PALETTE);
     }
-    if (!rgb || !palette.length) return { rgb: rgb, name: "未知" };
+    var NO_STD_NAME = (global.CO_I18N && typeof global.CO_I18N.t === 'function') ? global.CO_I18N.t('noStandardName') : "无标准名称";
+
+    if (!rgb || !palette.length) return { rgb: rgb, name: NO_STD_NAME, similarity: '0%', isDuplicate: false };
 
     var lab = rgbToOklab(rgb.r, rgb.g, rgb.b);
     var srcHsl = toHsl(rgb.r, rgb.g, rgb.b);
@@ -39,7 +41,7 @@
     var match = findBest(lab, srcHsl, palette, 35, SRC_COLOR_THRESHOLD, 0.35);
     if (!match) match = findBest(lab, srcHsl, palette, 55, SRC_COLOR_THRESHOLD, 0.45);
 
-    if (!match) return { rgb: rgb, name: "无标准名称" };
+    if (!match) return { rgb: rgb, name: NO_STD_NAME, similarity: '0%', isDuplicate: false };
 
     var finalName = match.name;
     var distance = Math.sqrt(match.dist);

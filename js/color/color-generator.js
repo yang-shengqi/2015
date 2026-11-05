@@ -14,6 +14,7 @@
   var C = global.CO_Color;
   var H = global.CO_Harmony;
   var hexToRgb = C.hexToRgb;
+  var rgbToHex = C.rgbToHex;
   var matchColorInPalette = global.CO_Filter.matchColorInPalette;
 
   function generateTints(baseRgb) {
@@ -25,7 +26,7 @@
     var L1 = Math.min(baseL + 0.35, 0.97);
     var L2 = Math.min(baseL + 0.15, 0.85);
     
-    // 👇 防倒挂补丁 1：如果主色极亮，L2 被压得比主色还暗，就强制取中间值
+    // 防倒挂补丁 1
     if (L2 <= baseL) {
       L2 = baseL + (L1 - baseL) * 0.5;
     }
@@ -33,7 +34,7 @@
     var L4 = Math.max(baseL - 0.15, 0.25);
     var L5 = Math.max(baseL - 0.35, 0.15);
 
-    // 👇 防倒挂补丁 2：如果主色极暗，L4 被抬得比主色还亮，就强制取中间值
+    // 防倒挂补丁 2
     if (L4 >= baseL) {
       L4 = baseL - (baseL - L5) * 0.5;
     }
@@ -51,6 +52,7 @@
 
   function generateRows(state, palette, ruleName) {
     var baseColorsRgb = [];
+    var displayColors = []; // 用于第一行显示的完整数据（含占比）
     var realTotalPixels = 1;
     if (state.hasImage && state.extracted && state.extracted.total) {
       realTotalPixels = state.extracted.total;
@@ -59,7 +61,8 @@
     var genColors = [], genNames = [];
     var ruleColors = [], ruleNames = [];
     var cssNames = [], cssRuleNames = [];
-    // 无限制模式下，把 4 个库合并，全库找名字！
+    
+    // 无限制模式下，把 4 个库合并，全库找名字
     var namePool = palette;
     if (!namePool) {
         namePool = [];
@@ -84,7 +87,7 @@
     };
 
     // ==========================================
-    // 👇 1. 定死全局主色（有库匹配库，无库用原色）
+    // 1. 定死全局主色
     // ==========================================
     var rawMainColor = state.mainRgb;
     if (state.hasImage && state.baseImageColors && state.baseImageColors.length > 0) {
@@ -102,30 +105,45 @@
     }
 
     // ==========================================
-    // 👇 2. 准备第一行色卡
+    // 2. 准备第一行色卡（核心防崩、防错乱逻辑）
     // ==========================================
     if (state.hasImage && state.baseImageColors && state.baseImageColors.length > 0) {
       var raw = state.baseImageColors;
-      if (raw.length >= 3) {
-        state.baseImageColors = [raw[1], raw[2], raw[0], raw[3], raw[4]];
+      
+      if (raw.length >= 5) {
+        // 正常情况：颜色足够，生成重排副本，主色移至第三格 (index 2)
+        displayColors = [raw[1], raw[2], raw[0], raw[3], raw[4]];
+      } else {
+        // 🔥 兜底：单色/少色图，直接以第一主色生成5个明度阶梯补齐
+        var mainRgb = hexToRgb(raw[0].hex);
+        var fallbackTints = generateTints(mainRgb);
+        
+        // 重新构建用于显示的数组，确保不报错
+        displayColors = fallbackTints.map(function(rgb, idx) {
+          var cnt = (idx === 2) ? (raw[0].count || 1) : Math.max(1, Math.floor((raw[0].count || 1) * 0.1));
+          return { hex: rgbToHex(rgb), count: cnt };
+        });
       }
-      baseColorsRgb = state.baseImageColors.map(function(c) { return hexToRgb(c.hex); });
+      baseColorsRgb = displayColors.map(function(c) { return hexToRgb(c.hex); });
+      
     } else {
+      // 无图片模式
       baseColorsRgb = generateTints(mainBaseColor); 
       if (baseColorsRgb.length >= 3) baseColorsRgb[2] = mainBaseColor; 
+      
+      displayColors = baseColorsRgb.map(function(rgb) {
+          return { hex: rgbToHex(rgb), count: 1 };
+      });
     }
 
     // ==========================================
-    // 👇 3. 渲染第一层
+    // 3. 渲染第一层（标签已修复，第三格是主色）
     // ==========================================
     baseColorsRgb.forEach(function(rgb, idx) {
       var finalRgb = rgb; 
-      // 🔥 删除了强制改回 state.mainRgb 的烂代码，死死绑定库里的颜色
-      
       var finalName = t('noStandardName');
-
-      // 🔥 放开拦截，全库找名字
       var match = matchColorInPalette(finalRgb, namePool, usedNames);
+      
       if (match && match.name !== t('noStandardName') && match.name !== '未知') {
         finalName = match.name;
         if (match.isDuplicate || parseFloat(match.similarity) < 100) {
@@ -140,24 +158,23 @@
       var hueStr = Math.round(C.rgbToOklch(finalRgb).h) || 0;
       
       if (state.hasImage) {
-        var cData = state.baseImageColors[idx];
+        var cData = displayColors[idx]; 
         var pctVal = cData && cData.count ? (cData.count / realTotalPixels * 100) : 0;
         var pctStr = pctVal.toFixed(1) + '%';
         
-        if (idx === 0) {
+        // 🔥 第三格才是主色
+        if (idx === 2) {
           labelText = t('primaryPct') + pctStr; 
         } else {
           labelText = t('secondaryPct') + pctStr;
         }
       } else {
         var displayL = Math.round(C.rgbToOklch(finalRgb).L * 100);
-        
         if (idx === 2) {
             labelText = t('labelPrimary') + displayL + '%';
         } else {
             labelText = t('labelMetric') + displayL + '%';
         }
-        
         if (labelText) labelText += ' ( ' + t('actualHue') + ' ' + hueStr + '° )';
       }
       
@@ -166,15 +183,14 @@
     });
 
     // ==========================================
-    // 👇 4. 渲染第二层（绑定第一行中间的主色）
+    // 4. 渲染第二层（加入终极防崩兜底）
     // ==========================================
-    var trueMainColor = genColors[2]; 
+    var trueMainColor = genColors[2] || genColors[0] || state.mainRgb; 
     var baseOklch = C.rgbToOklch(trueMainColor);
     var generatedColors = [];
-    var monoPcts = [98, 75, 50, 30, 5];
 
     if (ruleName === 'mono') {
-        // 👇 直接读取上面第一行的 5 个颜色，把彩度清零（C: 0），明度原样保留
+        // 灰度：直接读取上面第一行的 5 个颜色，把彩度清零
         generatedColors = baseColorsRgb.map(function(rgb) {
             var o = C.rgbToOklch(rgb);
             return C.oklchToRgb({ L: o.L, C: 0, h: o.h });
@@ -193,6 +209,7 @@
         });
     }
 
+    // 非灰度模式下，强制第一个色卡等于主色（三向焊死）
     if (ruleName !== 'mono') {
         generatedColors[0] = trueMainColor; 
     }
@@ -203,7 +220,6 @@
       
       var isMain = (ruleName === 'mono' && index === 2) || (ruleName !== 'mono' && index === 0);
 
-      // 🔥 放开拦截，全库找名字
       var matchObj = matchColorInPalette(finalRgb, namePool, usedNames);
       if (matchObj && matchObj.name !== t('noStandardName') && matchObj.name !== '未知') {
         finalName = matchObj.name;
@@ -217,7 +233,6 @@
       var labelPrefix = '';
 
       if (ruleName === 'mono') {
-        // 👇 读取当前色块的真实明度（L值），换算成真实灰度百分比
         var actualL = C.rgbToOklch(finalRgb).L;
         var actualGrayPct = Math.round((1 - actualL) * 100);
         labelPrefix = t('monoPct') + actualGrayPct + '%';
