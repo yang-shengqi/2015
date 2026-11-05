@@ -746,19 +746,25 @@ function injectStyles() {
 
     btn.textContent = isEn ? 'Rendering…' : '生成中...';
 
+    // 确保资源加载完毕
     ensureAssets(function () {
-      try {
-        var name = id === 'co-phone-left' ? (isEn ? 'default-palette.png' : '默认配色.png') : (isEn ? 'generated-palette.png' : '衍生配色.png');
-        exportPNG(model, name);
-        btn.textContent = originalText;
-        if (global.CO_Util && typeof global.CO_Util.toast === 'function') {
-          global.CO_Util.toast(isEn ? 'Image saved' : '截图已保存', 'ok');
+      
+      // 增加一个短暂延时，给浏览器一点时间去解析字体，避免导出时字体没生效
+      setTimeout(function () {
+        try {
+          var name = id === 'co-phone-left' ? (isEn ? 'default-palette.png' : '默认配色.png') : (isEn ? 'generated-palette.png' : '衍生配色.png');
+          exportPNG(model, name);
+          btn.textContent = originalText;
+          if (global.CO_Util && typeof global.CO_Util.toast === 'function') {
+            global.CO_Util.toast(isEn ? 'Image saved' : '截图已保存', 'ok');
+          }
+        } catch (err) {
+          console.error('绘制失败:', err);
+          btn.textContent = isEn ? 'Failed' : '生成失败';
+          setTimeout(function () { btn.textContent = originalText; }, 2000);
         }
-      } catch (err) {
-        console.error('绘制失败:', err);
-        btn.textContent = isEn ? 'Failed' : '生成失败';
-        setTimeout(function () { btn.textContent = originalText; }, 2000);
-      }
+      }, 150); // 等待 150 毫秒，让字体缓一缓
+
     });
   });
 
