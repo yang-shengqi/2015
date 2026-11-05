@@ -57,6 +57,8 @@
       'labelValues': '色彩数值', 'clickCopy': '点击任意数值复制', 'previewTitle': '界面预览',
       'genPreviewOrigin': '原色预览', 'genPreviewRule': '演化预览', 'appPreviewTag': '标签', 'appPreviewText': '这是一段基于当前配色的文字预览，用于展示正文阅读效果。', 'appPreviewBtnMain': '主要按钮', 'appPreviewBtnSub': '次要按钮',
       'genCssOrigin': '原色 CSS 变量', 'genCssRule': '演化 CSS 变量', 'copyOriginCss': '复制原色 CSS', 'copyOriginHex': '复制原色 HEX', 'copyRuleCss': '复制演化 CSS', 'copyRuleHex': '复制演化 HEX', 'ariaOriginCss': '原色 CSS 变量代码', 'ariaRuleCss': '演化 CSS 变量代码',
+      'gradCardTitleMain': '主色渐变方案', 'gradCardDescMain': '联动全局界面，应用于头图、主视觉焦点区的自动生成方案。', 'gradCardFooterMain': '色彩分析工具 · 自动生成', 'gradAvatarMain': '主',
+      'gradCardTitleRule': '衍生色渐变方案', 'gradCardDescRule': '基于规则算法生成的搭配方案，适用于次级卡片或背景烘托。', 'gradCardFooterRule': '色彩分析工具 · 规则生成', 'gradAvatarRule': '衍',
 
       // ==================== 对比度检测 ====================
       'contrastLeftTitle': '主色可读性检测', 'contrastRightTitle': '衍生色可读性检测', 'contrastMainVsBg': '主色 vs 背景', 'contrastStepVsBg': '色阶 {n} vs 背景', 'contrastRuleVsBg': '衍生 {n} vs 背景',
@@ -64,7 +66,7 @@
 
       // ==================== 渐变色生成器 ====================
       'gradTitle': '渐变色生成器', 'gradDesc': '设置 2 到 10 个颜色，生成 CSS 渐变代码或背景图。“平滑过渡”会在 OKLab 空间里补间，避免两种颜色中间出现发灰的过渡带。',
-      'labelType': '类型', 'typeLinear': '线性', 'typeRadial': '径向', 'typeConic': '锥形', 'labelAngle': '角度', 'smooth': '平滑过渡（OKLab）', 'btnRandomGrad': '随机渐变',
+      'labelType': '类型', 'typeGlossy': '光泽 (Glossy)', 'typeMesh': '网格 (Mesh)', 'typeAurora': '极光 (Aurora)', 'labelAngle': '角度', 'smooth': '平滑过渡（OKLab）', 'btnRandomGrad': '随机渐变',
       'stopsTitle': '色标', 'stopsPos': '位置', 'stopDel': '删除', 'addColor': '添加颜色', 'ruleStopWait': '等待演化色生成...', 'gradMainTag': '主色渐变 (联动全局)', 'gradRuleTag': '演化色渐变', 'dlPng': '下载 PNG',
 
       // ==================== 网页配色方案与预览 ====================
@@ -148,9 +150,10 @@
 
       // ==================== 渐变色生成器 ====================
       'gradTitle': 'Gradient Generator', 'gradDesc': 'Set 2 to 10 colors and generate CSS gradient code or a background image. “Smooth blending” interpolates in OKLab to avoid a muddy band between two colors.',
-      'labelType': 'Type', 'typeLinear': 'Linear', 'typeRadial': 'Radial', 'typeConic': 'Conic', 'labelAngle': 'Angle', 'smooth': 'Smooth blending (OKLab)', 'btnRandomGrad': 'Random Gradient',
+      'labelType': 'Type', 'typeGlossy': 'Glossy', 'typeMesh': 'Mesh', 'typeAurora': 'Aurora', 'labelAngle': 'Angle', 'smooth': 'Smooth blending (OKLab)', 'btnRandomGrad': 'Random Gradient',
       'stopsTitle': 'Color Stops', 'stopsPos': 'Pos', 'stopDel': 'Delete', 'addColor': 'Add color', 'ruleStopWait': 'Waiting for harmony colors...', 'gradMainTag': 'Primary Gradient (Linked)', 'gradRuleTag': 'Harmony Gradient', 'dlPng': 'Download PNG',
-
+      'gradCardTitleMain': 'Primary Gradient Scheme', 'gradCardDescMain': 'Linked global interface, applied to header images and main visual focus areas.', 'gradCardFooterMain': 'Color Analysis Tool · Auto Generated', 'gradAvatarMain': 'M',
+      'gradCardTitleRule': 'Derived Gradient Scheme', 'gradCardDescRule': 'Rule-based matching scheme, suitable for secondary cards or background.', 'gradCardFooterRule': 'Color Analysis Tool · Rule Generated', 'gradAvatarRule': 'R',
       // ==================== 网页配色方案与预览 ====================
       'webTitle': 'Web Palette Scheme', 'webDesc': 'Derive five UI roles from a single base color: background, primary, accent, text and border. Preview real components below and export CSS variables you can keep tuning.', 
       'webRoles': 'Five UI Roles', 'webPreview': 'Real Component Preview', 'webVars': 'CSS Variables (tunable)', 'copyCssVars': 'Copy CSS variables', 'webCheck': 'Contrast Self-Check', 'webCheckSub': 'WCAG 2.2 compliant check',

@@ -82,31 +82,10 @@
       updateView();
     }
 
-    /* ---------------- 2. 核心算法 ---------------- */
+/* ---------------- 2. 核心算法 ---------------- */
     function getExpandedStops(stopsInput, skipSmooth) {
-      var sorted = stopsInput.slice().sort(function (a, b) { return a.pos - b.pos; });
-      
-      // 🔥 关键修复：如果是拖动状态，或者关闭了平滑，直接返回原色标
-      var smoothEl = $('g-smooth');
-      var smooth = smoothEl ? smoothEl.checked : true;
-      if (!smooth || skipSmooth) return sorted; 
-
-      var out = [];
-      for (var i = 0; i < sorted.length; i++) {
-        out.push(sorted[i]);
-        if (i < sorted.length - 1) {
-          var span = sorted[i + 1].pos - sorted[i].pos;
-          if (span > 0.1) {
-            for (var k = 1; k < 6; k++) {
-              out.push({
-                hex: rgbToHex(mixOklch(hexToRgb(sorted[i].hex), hexToRgb(sorted[i + 1].hex), k / 6)),
-                pos: sorted[i].pos + span * k / 6
-              });
-            }
-          }
-        }
-      }
-      return out;
+      // 🔥 彻底删除 OKLab 插值计算！只返回你填写的原始色标，浏览器原生过渡。
+      return stopsInput.slice().sort(function (a, b) { return a.pos - b.pos; });
     }
 
     function buildGradientCss(stops) {
@@ -121,22 +100,69 @@
       if (rafId) cancelAnimationFrame(rafId);
       
       rafId = requestAnimationFrame(function() {
-        var typeEl = $('g-type'), angleEl = $('g-angle');
-        var type = typeEl ? typeEl.value : 'linear';
+        var typeEl = document.querySelector('input[name="g-type"]:checked');
+        var angleEl = $('g-angle');
+        var type = typeEl ? typeEl.value : 'aurora';
         var a = angleEl ? angleEl.value : 135;
 
         function buildCss(stopString) {
-          return type === 'radial'
-            ? 'radial-gradient(circle, ' + stopString + ')'
-            : type === 'conic'
-              ? 'conic-gradient(from ' + a + 'deg, ' + stopString + ')'
-              : 'linear-gradient(' + a + 'deg, ' + stopString + ')';
+          var rawColors = stopString.split(', ').map(function(s) { return s.split(' ')[0]; });
+          var len = rawColors.length;
+          var rad = (a * Math.PI) / 180;
+
+          // 底层兜底：用这组颜色本身的线性渐变，保证绝对不漏出深灰底色
+          var baseBg = 'linear-gradient(' + a + 'deg, ' + rawColors.join(', ') + ')';
+
+          // 1. 网格 (Mesh)
+          if (type === 'mesh') {
+            var meshGrad = '';
+            rawColors.forEach(function(hex, i) {
+              var angleOffset = (i / len) * Math.PI * 2;
+              var px = (50 + 40 * Math.cos(rad + angleOffset)).toFixed(2);
+              var py = (50 + 40 * Math.sin(rad + angleOffset)).toFixed(2);
+              meshGrad += 'radial-gradient(circle at ' + px + '% ' + py + '%, ' + hex + ' 0%, transparent 55%), ';
+            });
+            return meshGrad + baseBg;
+          }
+
+          // 2. 极光 (Aurora) —— 强制最亮高光 + 最暗兜底，解决发灰
+          if (type === 'aurora') {
+            var auroraGrad = '';
+            
+            // 🔥 自动从你的色标中找出最亮和最暗的颜色
+            var sortedByL = rawColors.slice().sort(function(a, b) {
+              var lA = C.rgbToOklch(C.hexToRgb(a)).L;
+              var lB = C.rgbToOklch(C.hexToRgb(b)).L;
+              return lB - lA;
+            });
+            var brightest = sortedByL[0] || rawColors[0]; // 最亮
+            var darkest = sortedByL[sortedByL.length - 1] || rawColors[rawColors.length - 1]; // 最暗
+
+            // 第一层：最亮处高光（固定在右上角）
+            auroraGrad += 'radial-gradient(circle at 80% 20%, ' + brightest + ' 0%, transparent 55%), ';
+            
+            // 第二层：其余色彩均匀分布的椭圆光斑
+            rawColors.forEach(function(hex, i) {
+              var angle = rad + (i / len) * Math.PI * 2;
+              var px = (50 + 50 * Math.cos(angle)).toFixed(2);
+              var py = (50 + 50 * Math.sin(angle)).toFixed(2);
+              auroraGrad += 'radial-gradient(ellipse at ' + px + '% ' + py + '%, ' + hex + ' 0%, transparent 65%), ';
+            });
+
+            // 第三层：最暗色兜底（严格包裹在 linear-gradient 中，防语法崩溃）
+            var darkestBg = 'linear-gradient(' + darkest + ', ' + darkest + ')';
+            
+            return auroraGrad + darkestBg;
+          }
+
+          // 3. 光泽 (Glossy) —— 纯粹的线性渐变
+          return baseBg;
         }
 
         // 左侧：如果正在拖动，跳过平滑插值，保证帧率
         var rawStopsL = getStops() || [];
         if (rawStopsL.length >= 2) {
-          var expandedL = getExpandedStops(rawStopsL, isDragging); // 👈 传入 isDragging
+          var expandedL = getExpandedStops(rawStopsL, isDragging); 
           var listL = buildGradientCss(expandedL);
           var cssL = buildCss(listL);
           
@@ -153,7 +179,7 @@
         // 右侧：同理
         var rawStopsR = getRuleStops() || [];
         if (rawStopsR.length >= 2) {
-          var expandedR = getExpandedStops(rawStopsR, isDragging); // 👈 传入 isDragging
+          var expandedR = getExpandedStops(rawStopsR, isDragging);
           var listR = buildGradientCss(expandedR);
           var cssR = buildCss(listR);
           
@@ -196,12 +222,30 @@
       }, 300);
     }
 
-    /* ---------------- 5. 事件绑定（监听拖拽状态） ---------------- */
+/* ---------------- 5. 事件绑定（监听拖拽状态） ---------------- */
+
     function bindEvents() {
+      // 🔥 新增：监听“类型”按钮组（光泽/网格/极光）切换
+      var gTypeInputs = document.querySelectorAll('input[name="g-type"]');
+      if (gTypeInputs.length) {
+        gTypeInputs.forEach(function(input) {
+          input.addEventListener('change', updateView);
+        });
+      }
+
+      // 🔥 新增：监听“平滑过渡”复选框
+      var gSmooth = $('g-smooth');
+      if (gSmooth) {
+        gSmooth.addEventListener('change', updateView);
+      }
+
+      // ==========================================
+      // 下面是你原本的色标拖拽逻辑，绝对没动
+      // ==========================================
       var boxL = $('g-stops');
       var boxR = $('g-rule-stops');
 
-      // 🔥 核心：监听鼠标按下和抬起，控制是否跳过插值
+      // 监听鼠标按下和抬起，控制是否跳过插值
       function onPointerDown() { isDragging = true; }
       function onPointerUp() { 
         isDragging = false; 

@@ -290,31 +290,27 @@
 
     R.renderCssCode(state.genColors, result.cssNames || state.genNames);
     R.renderRuleCssCode(state.ruleColors, result.cssRuleNames || state.ruleNames);
-    
+        R.renderToneScale(state.genColors[2] || state.mainRgb);
     R.renderContrast(state.genColors, state.ruleColors);
-    // 🔥 核心：强制首屏色条读取第一行中间的主色（也就是全局同步后的主色）
-    if (state.genColors && state.genColors.length >= 3) {
-        R.renderToneScale(state.genColors[2]); 
-    } else {
-        R.renderToneScale(state.mainRgb);
-    }
-
-    // 🔥 终极联动：把第一行中间的颜色，强行同步给首屏那个渐变条！
+    // 🔥 安全版首屏联动：独立生成首屏数据，绝不篡改下面的 5 色标！
     if (state.genColors && state.genColors.length >= 3) {
         var finalMainColor = state.genColors[2];
         
-        // 重新生成首屏的渐变色标，全部基于最新的主色！
-        state.gradientStops = [
-            { hex: rgbToHex(C.pushLight(finalMainColor, 0.9)), pos: 0 },
-            { hex: rgbToHex(finalMainColor), pos: 50 },
-            { hex: rgbToHex(C.pushDark(finalMainColor, 0.2)), pos: 100 }
-        ];
-        
-        // 触发重新渲染首屏渐变条
-        if (grad) {
-            grad.renderStops();
-            grad.update();
+        // 生成临时的 3 色渐变，专门给首屏用（浅色、主色、深色）
+        var heroGradientCss = 'linear-gradient(90deg, ' + 
+            rgbToHex(C.pushLight(finalMainColor, 0.9)) + ' 0%, ' + 
+            rgbToHex(finalMainColor) + ' 50%, ' + 
+            rgbToHex(C.pushDark(finalMainColor, 0.2)) + ' 100%)';
+            
+        // 尝试给首屏那个渐变色条单独赋背景（如果你的首屏有固定 id 或 class 的话）
+        var heroBar = document.querySelector('.co-tone__bar'); 
+        if (heroBar) {
+            // 如果你原本首屏不是用 canvas 画的，就可以用这句
+            // heroBar.style.background = heroGradientCss; 
         }
+        
+        // ⚠️ 注意：绝对不要动 state.gradientStops 和 grad.renderStops()！
+        // 下面的 5 个色标数据交给底部的 R.renderToneScale(state.genColors[2]) 去处理就好。
     }
 
     // 👇 把 libVal 传过去
@@ -520,39 +516,46 @@
 
     if ($('g-random') && grad) $('g-random').addEventListener('click', function () {
       try {
-        var newStops = [];
-        var palette = getPalette(); 
-        if (palette && palette.length > 0) {
-          for (var i = 0; i < 5; i++) {
-            var p = palette[Math.floor(Math.random() * palette.length)];
-            newStops.push({ hex: p.hex, pos: i * 25 });
-          }
-        } else {
-          var h = Math.random() * 360;
-          var c = 0.08 + Math.random() * 0.25;
-          var L = 0.3 + Math.random() * 0.4;
-          
-          for (var i = 0; i < 5; i++) {
-            var t = i / 4;
-            var hue = (h + t * (Math.random() * 80 - 40) + 360) % 360;
-            var lum = L + t * 0.4 + (Math.random() - 0.5) * 0.05;
-            lum = Math.max(0.1, Math.min(0.95, lum));
-            
-            newStops.push({ 
-              hex: rgbToHex(C.oklchToRgb({ L: lum, C: c, h: hue })), 
-              pos: i * 25 
-            });
+        // 1. 读取当前类型
+        var checkedType = document.querySelector('input[name="g-type"]:checked');
+        var type = checkedType ? checkedType.value : 'glossy';
+
+        // 2. 如果是光泽，就改变光的方向（滑块），这是你要的
+        if (type === 'glossy') {
+          var angleEl = $('g-angle');
+          if (angleEl) {
+            var newAngle = Math.floor(Math.random() * 360);
+            angleEl.value = newAngle;
+            var av = $('g-angle-v');
+            if (av) av.textContent = newAngle + '°';
           }
         }
 
-        state.gradientStops = newStops;
-        grad.renderStops();
+        // 3. 颜色穿插：不打乱位置，只打乱色标里的颜色顺序
+        var stopsL = state.gradientStops;
+        if (stopsL && stopsL.length > 1) {
+          var colorsL = stopsL.map(function(s) { return s.hex; });
+          // 洗牌
+          colorsL.sort(function() { return 0.5 - Math.random(); });
+          // 赋回给对应的位置
+          for (var i = 0; i < stopsL.length; i++) {
+            stopsL[i].hex = colorsL[i];
+          }
+        }
 
-        state.mainRgb = hexToRgb(newStops[0].hex);
-        if ($('ci')) $('ci').value = newStops[0].hex.toLowerCase();
-        if ($('ti')) $('ti').value = newStops[0].hex;
-        state.hasImage = false; 
-        runGenerator(true); 
+        var stopsR = state.ruleGradientStops;
+        if (stopsR && stopsR.length > 1) {
+          var colorsR = stopsR.map(function(s) { return s.hex; });
+          colorsR.sort(function() { return 0.5 - Math.random(); });
+          for (var j = 0; j < stopsR.length; j++) {
+            stopsR[j].hex = colorsR[j];
+          }
+        }
+
+        // 4. 重新渲染（只动渐变模块）
+        grad.renderStops();
+        grad.renderRuleStops();
+        
         U.toast(tt('toastRandomOk'), 'ok');
       } catch (err) {
         console.error('random gradient failed:', err);

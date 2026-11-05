@@ -44,65 +44,142 @@
     el.innerHTML = html;
   }
 
-  /* ---------- 界面预览 ---------- */
+  /* ---------- 明度阶梯 ---------- */
+  function renderToneScale(baseRgb) {
+    var el = $('toneScale'); if (!el) return;
+    var base = rgbToOklch(baseRgb), html = '';
+    for (var i = 1; i <= 9; i++) {
+      var pct = i * 10, L, Cc;
+      if (pct <= 50) { var t1 = pct / 50; L = 0.95 - t1 * (0.95 - base.L); Cc = t1 * base.C; }
+      else { var t2 = (pct - 50) / 50; L = base.L - t2 * (base.L - 0.25); Cc = base.C - t2 * (base.C * 0.7); }
+      var rgb = oklchToRgb({ L: L, C: Cc, h: base.h }), hex = rgbToHex(rgb);
+      html += '<div class="co-tone-block co-tip" style="--tone-bg:' + hex + ';--tone-text:' + textOn(rgb) + ';" data-action="copy-tone" data-hex="' + hex + '" data-tip="' + copyTip(hex) + '"><span>' + hex + '</span></div>';
+    }
+    el.innerHTML = html;
+  }
+
+/* ---------- 界面预览 ---------- */
   function renderPreview(colors, ruleColors, mainRgb) {
     var el = $('pv'); if (!el) return;
 
-    var mainBtnBg   = mainRgb || (colors && colors[0]) || { r: 47, g: 111, b: 143 };
-    var mainBtnText = textOn(mainBtnBg);
-    
-    var ruleBtnBg   = (ruleColors && ruleColors[0]) || mainBtnBg;
-    var ruleBtnText = textOn(ruleBtnBg);
-
-    function buildSandbox(colorSet, titleText, defaultBtnBg, defaultBtnText, isRulePreview) {
-      if (!colorSet || !colorSet.length) return '';
-      
-      var stripesHtml = '<div style="display:flex;width:100%;height:1px;overflow:hidden;">';
-      colorSet.forEach(function (c) { 
-        stripesHtml += '<div style="flex:1;min-width:0;background:' + rgbToHex(c) + ';"></div>'; 
-      });
-      stripesHtml += '</div>';
-
-      var sorted = colorSet.slice().sort(function (a, b) { return luminance(b) - luminance(a); });
-      var lightest = pushLight(sorted[0], 0.92);
-      var darkest = pushDark(sorted[sorted.length - 1], 0.22);
-      
-      var tagBg = isRulePreview ? colorSet[0] : (colorSet.length >= 4 ? colorSet[3] : colorSet[0]);
-      
-      var buttonsHtml = '';
-      if (isRulePreview && colorSet.length > 0) {
-        colorSet.forEach(function(c) {
-          buttonsHtml += '<button style="padding:6px 12px;border-radius:4px;border:none;font-size:10px;font-weight:600;background:' + rgbToHex(c) + ';color:' + textOn(c) + ';margin-right:4px;">' + t('appPreviewBtnMain') + '</button>';
-        });
-      } else {
-        buttonsHtml = 
-          '<button style="padding:6px 12px;border-radius:4px;border:none;font-size:10px;font-weight:600;background:' + rgbToHex(defaultBtnBg) + ';color:' + defaultBtnText + ';">' + t('appPreviewBtnMain') + '</button>' +
-          '<button style="padding:6px 12px;border-radius:4px;border:1px solid ' + rgbToHex(darkest) + ';font-size:10px;font-weight:600;background:transparent;color:' + rgbToHex(darkest) + ';">' + t('appPreviewBtnSub') + '</button>';
-      }
-
-      var uiHtml =
-        '<div style="background:' + rgbToHex(lightest) + ';color:' + textOn(lightest) + ';padding:16px;flex:1;display:flex;flex-direction:column;justify-content:space-between;">' +
-          '<div>' +
-            '<div style="margin-bottom:10px;"><span style="display:inline-block;background:' + rgbToHex(tagBg) + ';color:' + textOn(tagBg) + ';padding:3px 8px;border-radius:10px;font-size:10px;font-weight:600;">' + t('appPreviewTag') + '</span></div>' +
-            '<p style="font-size:11px;line-height:1.5;margin:0 0 12px 0;opacity:0.85;">' + t('appPreviewText') + '</p>' +
-          '</div>' +
-          '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
-            buttonsHtml +
-          '</div>' +
-        '</div>';
-
-      return '<div style="flex:1;min-width:0;display:flex;flex-direction:column;border-radius:8px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.04);background:#fff;">' +
-        '<div style="background:' + rgbToHex(darkest) + ';color:' + textOn(darkest) + ';padding:10px 16px;font-size:12px;font-weight:700;">' + titleText + '</div>' +
-        stripesHtml + uiHtml +
-      '</div>';
+    function safeHexToRgba(hex, alpha) {
+      try {
+        if (typeof hex !== 'string' || hex.length !== 7 || hex[0] !== '#') return 'transparent';
+        var r = parseInt(hex.slice(1, 3), 16),
+            g = parseInt(hex.slice(3, 5), 16),
+            b = parseInt(hex.slice(5, 7), 16);
+        if (isNaN(r) || isNaN(g) || isNaN(b)) return 'transparent';
+        return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
+      } catch (e) { return 'transparent'; }
     }
 
-    el.innerHTML = '<div style="display:flex;gap:16px;align-items:stretch;width:100%;box-sizing:border-box;">' +
-      buildSandbox(colors, t('genPreviewOrigin'), mainBtnBg, mainBtnText, false) +
-      buildSandbox(ruleColors, t('genPreviewRule'), ruleBtnBg, ruleBtnText, true) +
+    // 统一的现代化几何 SVG
+    var unifiedSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:24px;height:24px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>';
+
+    var fontFam = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
+    function buildFeatureCard(buttonColors, titleText, isRulePreview, baseBgColor, mainHighlightColor) {
+      if (!buttonColors || !buttonColors.length) return '';
+      
+      var bgRgb = pushLight(baseBgColor, 0.94);
+      var bgHex = rgbToHex(bgRgb);
+      
+      var textHex = textOn(bgRgb);
+      var textMutedHex = safeHexToRgba(textHex, 0.6);
+      var mainHex = rgbToHex(mainHighlightColor);
+      
+      // 修复：这里之前写错了变量名
+      var englishSubtitle = isRulePreview ? 'DERIVED COLORS' : 'PRIMARY COLORS';
+
+      var buttonsHtml = '';
+      buttonColors.forEach(function(c) {
+        var hex = rgbToHex(c);
+        var btnText = textOn(c); 
+        
+        // 按钮样式
+        buttonsHtml += `
+          <button style="
+            background-color: ${hex} !important;
+            color: ${btnText} !important;
+            height: 40px;
+            padding: 0 20px;
+            border-radius: var(--nm-r-sm) !important;
+            border: 1px solid rgba(0,0,0,0.08);
+            font-size: 14px;
+            font-weight: 400 !important;
+            font-family: ${fontFam} !important;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            transition: all 0.2s ease-in-out;
+          "
+          onmouseover="this.style.filter='brightness(1.15)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(0,0,0,0.12)';"
+          onmouseout="this.style.filter='none'; this.style.transform='none'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.04)';"
+          >
+            Button
+          </button>
+        `;
+      });
+
+      return `
+        <div style="
+          flex: 1; 
+          background:#FFFFFF; 
+          border-radius: 16px; 
+          overflow:hidden; 
+          box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+          border: 1px solid rgba(0,0,0,0.05);
+          font-family:${fontFam};
+          display: flex;
+          flex-direction: column;
+        ">
+          
+          <div style="height: 40px; background: ${mainHex} !important; border-bottom: 1px solid rgba(0,0,0,0.08); padding: 0 20px; display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #FF5F56;"></div>
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #FFBD2E;"></div>
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: #27C93F;"></div>
+          </div>
+
+          <div style="background:${bgHex}; padding: 40px; flex: 1; display: flex; flex-direction: column;">
+            
+            <div style="display: flex; align-items: center; margin-bottom: 24px; width: 100%;">
+              <div style="width: 52px; height: 52px; border-radius: var(--nm-r-md) !important; background-color: ${mainHex} !important; display: flex; align-items: center; justify-content: center; margin-right: 16px; flex-shrink: 0;">
+                ${unifiedSvg}
+              </div>
+              
+              <div style="display: flex; flex-direction: column; justify-content: center;">
+                <div style="font-size: 12px; font-weight: 700; color: ${textMutedHex}; letter-spacing: 1px;">${englishSubtitle}</div>
+                <div style="font-size: 18px; font-weight: 700; color: ${textHex}; margin-bottom: 4px; line-height: 1.1;">${titleText}</div>
+              </div>
+            </div>
+
+            <div style="font-size: 15px; line-height: 1.6; font-weight: 400; color: ${textMutedHex}; margin-bottom: 32px; width: 100%;">
+              ${t('appPreviewText')}
+            </div>
+            
+            <!-- 这里的 gap 控制按钮间距，改成你想要的数值即可 -->
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; width: 100%; margin-top: auto;">
+              ${buttonsHtml}
+            </div>
+
+          </div>
+        </div>
+      `;
+    }
+
+    var leftBgBase = colors && colors.length > 0 ? colors[0] : {r:255,g:255,b:255};
+    var leftIconMain = mainRgb || (colors && colors.length >= 3 ? colors[2] : leftBgBase);
+
+    var rightBgBase = ruleColors && ruleColors.length > 1 ? ruleColors[1] : (ruleColors && ruleColors.length > 0 ? ruleColors[0] : leftBgBase);
+    var rightIconMain = rightBgBase; 
+
+    el.innerHTML = '<div style="display:flex;gap:24px;align-items:stretch;width:100%;box-sizing:border-box;">' +
+      buildFeatureCard(colors, t('genPreviewOrigin'), false, leftBgBase, leftIconMain) +
+      buildFeatureCard(ruleColors, t('genPreviewRule'), true, rightBgBase, rightIconMain) +
     '</div>';
   }
-
   /* ---------- 色彩数值表 ---------- */
   function renderColorTable(colors, names) {
     var wrap = $('colorDataWrap'); if (!wrap || !colors) return;
