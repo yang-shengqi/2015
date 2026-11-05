@@ -1,5 +1,15 @@
 /* ================= 手机预览组件样式 ================= */
 
+/* 核心：给整个预览区增加灰度底板，替代原本的内凹感 */
+#s-phone {
+  background: var(--nm-inset-bg, #d1d9e6); /* 使用系统灰度变量 */
+  border-radius: var(--nm-r-lg, 24px);
+  padding: 40px 20px;
+
+  border: 1px solid var(--nm-line-soft, rgba(0,0,0,0.05)); /* 浅色描边增加边界感 */
+  margin-top: 16px;
+}
+
 /* 1. 基础容器与布局 */
 #phone-preview-container { 
   margin: 0; 
@@ -48,6 +58,7 @@
     0 0 0 10px #111, 
     var(--nm-out-lg); 
 }
+
 
 /* 3. 手机内部通用元素 */
 .cp-bg { position: absolute; inset: 0; display: flex; z-index: 0; }
@@ -188,25 +199,39 @@
   .cp-grid-2 .cp-card::before { inset: 10px; }
 }
 
-/* 截图下载按钮 */
+/* 截图下载按钮 - 1:1复刻导航栏胶囊 */
 .cp-download-btn {
-  margin-top: 42px;
-  padding: 8px 18px;
-  border-radius: var(--nm-r-sm, 8px);
+  margin-top: 40px;
+  
+  /* 1. 尺寸与形状复刻 */
+  height: 40px;                 /* 对齐导航栏高度 */
+  padding: 0 24px;              /* 左右内边距，用高度撑起完美胶囊 */
+  border-radius: var(--nm-r-full, 999px); /* 全圆角 */
   border: none;
+  box-sizing: border-box;
+  
+  /* 2. 视觉与字体复刻 */
   background: var(--nm-bg, #e0e5ec);
-  box-shadow: var(--nm-out-sm);
-  color: var(--nm-text-2, #555);
-  font-size: 13px;
-  font-weight: 600;
+  box-shadow: var(--nm-out-sm); /* 导航栏同款浅凸起阴影 */
+  color: var(--nm-text-2, #5b6270);
+  font-size: 14px;              /* 导航栏标准字号 */
+  font-weight: 500;             /* 取消加粗，导航栏字重更细腻 */
+  
+  /* 3. 弹性布局确保文字完美居中 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  
   cursor: pointer;
   transition: all 0.2s;
-  align-self: center; /* 让按钮居中 */
+  align-self: center;
 }
+
 .cp-download-btn:hover {
   color: var(--nm-accent, #2f6f8f);
-  box-shadow: var(--nm-out);
+  box-shadow: var(--nm-out); /* 悬停时阴影加深 */
 }
+
 .cp-download-btn:active {
-  box-shadow: var(--nm-in-sm);
+  box-shadow: var(--nm-in-sm); /* 按下时凹陷 */
 }

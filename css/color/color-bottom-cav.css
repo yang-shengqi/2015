@@ -5,7 +5,7 @@
 .co-sticky-bar {
   position: fixed;
   left: 50%;
-  bottom: calc(30px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   z-index: 900;
   box-sizing: border-box;
 
