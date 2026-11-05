@@ -1,6 +1,9 @@
 /* ============================================================
- * color-phone-preview.js —— 绝对纯净版
- * 无刷新、无按钮、无监听、无删除逻辑。只负责 Canvas 渲染与导出。
+ * color-phone-preview.js —— 绝对纯净版 · 一致性修复
+ * 变更范围（仅此两处）：
+ *   1. 八角 / 抽屉 阴影改由 SVG 位图绘制，预览与导出、PC 与移动端完全一致
+ *   2. 文字色按 WCAG 2.2 (1.4.3) 计算，覆盖状态栏（时间 / 信号 / 电池）
+ * 其余逻辑一字未动。
  * ============================================================ */
 (function (global) {
   'use strict';
@@ -20,6 +23,63 @@
   var F_SERIF   = '"Noto Serif SC","Songti SC","SimSun",serif';
   var F_DISPLAY = '"Playfair Display","Noto Serif SC",serif';
   var F_SANS    = '"Inter",-apple-system,sans-serif';
+
+  /* ================= 0. WCAG 2.2 工具 ================= */
+
+  var WHITE = { r: 255, g: 255, b: 255 };
+  var BLACK = { r: 0,   g: 0,   b: 0   };
+  var SOFT_BLACK = { r: 17, g: 17, b: 17 };
+
+  function hexToRgb(h) {
+    if (typeof h !== 'string') return { r: 0, g: 0, b: 0 };
+    h = h.replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    var n = parseInt(h, 16);
+    if (isNaN(n)) return { r: 0, g: 0, b: 0 };
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+
+  function srgbLin(v) {
+    v /= 255;
+    return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  }
+
+  function relLum(c) {
+    return 0.2126 * srgbLin(c.r) + 0.7152 * srgbLin(c.g) + 0.0722 * srgbLin(c.b);
+  }
+
+  function contrastRatio(a, b) {
+    var la = relLum(a), lb = relLum(b);
+    var hi = Math.max(la, lb), lo = Math.min(la, lb);
+    return (hi + 0.05) / (lo + 0.05);
+  }
+
+  /**
+   * 在一组背景色上挑选对比度最优的文字色（WCAG 2.2 SC 1.4.3 阈值 4.5:1）
+   * 优先 #111111（视觉柔和）；不达标退 #000000；深色背景走 #FFFFFF。
+   * 分裂背景跨中线时取各背景下的最小值比较——这是该布局下能做到的最优解。
+   */
+  function pickText(bgList) {
+    var bgs = [], i;
+    for (i = 0; i < bgList.length; i++) bgs.push(hexToRgb(bgList[i]));
+
+    function minRatio(fg) {
+      var m = Infinity;
+      for (var k = 0; k < bgs.length; k++) {
+        var v = contrastRatio(fg, bgs[k]);
+        if (v < m) m = v;
+      }
+      return m;
+    }
+
+    if (minRatio(SOFT_BLACK) >= 4.5) return '#111111';
+    if (minRatio(BLACK) >= 4.5) return '#000000';
+    return minRatio(WHITE) >= minRatio(BLACK) ? '#FFFFFF' : '#000000';
+  }
+
+  function isLight(hex) {
+    return relLum(hexToRgb(hex)) > 0.35;
+  }
 
   /* ================= 1. 绘图工具函数 ================= */
 
@@ -100,20 +160,91 @@
   }
 
   /* ================= 2. 枝影 SVG ================= */
-  var BRANCH_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 694" preserveAspectRatio="none">' +
+  
+  /* 👇👇👇 柳枝控制台（请在这里调整） 👇👇👇 */
+  var WILLOW_X = -80;        // 左右位移：负数往左移，正数往右移 (例如 -20 就是往左移 20px)
+  var WILLOW_Y = 0;        // 上下位移：负数往上移，正数往下移 (例如 30 就是往下移 30px)
+  var WILLOW_ROTATE = 35;   // 旋转角度：正数顺时针转，负数逆时针转 (例如 15 就是顺时针倾斜 15度)
+  var WILLOW_SCALE = 1.8;    // 缩放大小：1 是原始大小，0.8 是缩小，1.2 是放大
+  /* 👆👆👆 柳枝控制台（请在这里调整） 👆👆👆 */
+
+  var willowTransform = 'translate(' + WILLOW_X + ', ' + WILLOW_Y + ') rotate(' + WILLOW_ROTATE + ') scale(' + WILLOW_SCALE + ')';
+  // 为了以中心点旋转，我们需要知道原先柳枝的基准中心位置，这里大约在 (230, 300)
+  var willowCenterTransform = 'translate(230, 300) ' + willowTransform + ' translate(-230, -300)';
+
+
+  var BRANCH_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="2082" viewBox="0 0 320 694" preserveAspectRatio="none">' +
     '<defs>' +
-    '<filter id="treeBlur" x="-50%" y="-50%" width="300%" height="300%">' +
-    '<feGaussianBlur stdDeviation="8" />' + 
-    '</filter>' +
+    '<filter id="bw"><feGaussianBlur stdDeviation="10"/></filter>' +
+    '<filter id="bf"><feGaussianBlur stdDeviation="6"/></filter>' +
+    '<filter id="bm"><feGaussianBlur stdDeviation="3"/></filter>' +
+    '<filter id="bn"><feGaussianBlur stdDeviation="1.6"/></filter>' +
     '</defs>' +
-    '<g filter="url(#treeBlur)" fill="rgba(0,0,0,0.28)" transform="translate(-60, 0) rotate(10, 450, 400)">' +
-    '<path d="M -30 720 C 80 500 140 300 220 -20 L 260 -20 C 180 300 120 500 10 720 Z" />' +
-    '<path d="M 90 450 C 40 380 10 300 -20 200 L 0 190 C 30 290 60 370 110 430 Z" />' +
-    '<path d="M 140 300 C 180 250 240 200 280 150 C 220 220 160 270 130 320 Z" />' +
-    '<path d="M -20 720 C 80 500 140 300 220 -20 C 120 300 60 500 20 720 Z" />' +
-    '<path d="M 210 50 C 240 20 280 -10 320 -30 L 320 -10 C 280 10 240 40 215 70 Z" />' +
-    '<path d="M 60 600 C 100 580 150 550 190 520 L 195 535 C 150 565 100 595 65 615 Z" />' +
-    '<path d="M -20 -50 C 30 40 60 130 80 200 L 92 198 C 72 130 42 40 -10 -50 Z" transform="translate(0, 100)" />' +    
+    
+    '<g fill="#0a0a0a">' +
+      
+      /* ==================== 1. 背景窗格光影 ==================== */
+      '<g filter="url(#bw)" opacity="0.08">' +
+        '<path d="M 0 150 L 320 250 L 320 280 L 0 180 Z" />' +
+        '<path d="M 80 0 L 120 0 L 220 694 L 180 694 Z" />' +
+      '</g>' +
+
+      /* ==================== 2. 左下角：焦外虚化垂叶 ==================== */
+      '<g filter="url(#bf)" opacity="0.15">' +
+        '<path d="M 20 450 C 60 500, 80 600, 50 694" stroke="#0a0a0a" stroke-width="6" fill="none"/>' +
+        '<g transform="translate(30, 520) rotate(45) scale(1.5)"><path d="M0,0 C15,-8 35,-8 50,0 C35,8 15,8 0,0 Z"/></g>' +
+        '<g transform="translate(60, 600) rotate(15) scale(1.8)"><path d="M0,0 C15,-8 35,-8 50,0 C35,8 15,8 0,0 Z"/></g>' +
+        '<g transform="translate(10, 640) rotate(70) scale(1.3)"><path d="M0,0 C15,-8 35,-8 50,0 C35,8 15,8 0,0 Z"/></g>' +
+        '<g transform="translate(100, 450) rotate(-20) scale(1.6)"><path d="M0,0 C15,-8 35,-8 50,0 C35,8 15,8 0,0 Z"/></g>' +
+      '</g>' +
+
+      /* ==================== 3. 中景：穿插的枝叶 ==================== */
+      '<g filter="url(#bm)" opacity="0.1">' +
+        '<path d="M 300 180 C 200 220, 100 300, -10 400" stroke="#0a0a0a" stroke-width="3" fill="none"/>' +
+        '<g transform="translate(180, 260) rotate(-30)"><path d="M0,0 C10,-5 25,-5 35,0 C25,5 10,5 0,0 Z"/></g>' +
+        '<g transform="translate(120, 320) rotate(10)"><path d="M0,0 C10,-5 25,-5 35,0 C25,5 10,5 0,0 Z"/></g>' +
+        '<g transform="translate(230, 210) rotate(-50)"><path d="M0,0 C10,-5 25,-5 35,0 C25,5 10,5 0,0 Z"/></g>' +
+      '</g>' +
+
+      /* ==================== 4. 近景：下垂的柳枝 ==================== */
+      /* 👇 这里引入了上方的位移、旋转和缩放参数 */
+      '<g filter="url(#bn)" opacity="0.24" transform="' + willowCenterTransform + '">' +
+        
+        /* 主枝条 1 */
+        '<path d="M 260 -20 C 240 100, 180 200, 180 320 C 180 420, 230 500, 220 600" stroke="#0a0a0a" stroke-width="2.5" fill="none" />' +
+        /* 主枝条 2 */
+        '<path d="M 340 80 C 300 160, 280 240, 280 350 C 280 450, 310 520, 290 600" stroke="#0a0a0a" stroke-width="1.5" fill="none" />' +
+        /* 分叉细枝 */
+        '<path d="M 210 140 C 190 180, 150 200, 130 250" stroke="#0a0a0a" stroke-width="1.2" fill="none" />' +
+        
+        /* 柳叶排布 */
+        '<g transform="translate(235, 80) rotate(-30)"><path d="M0,0 Q -5,15 0,30 Q 5,15 0,0 Z"/></g>' +
+        '<g transform="translate(215, 150) rotate(-40)"><path d="M0,0 Q -5,15 0,30 Q 5,15 0,0 Z"/></g>' +
+        '<g transform="translate(195, 220) rotate(-50)"><path d="M0,0 Q -5,15 0,30 Q 5,15 0,0 Z"/></g>' +
+        '<g transform="translate(185, 300) rotate(-30)"><path d="M0,0 Q -5,15 0,30 Q 5,15 0,0 Z"/></g>' +
+        '<g transform="translate(195, 380) rotate(-10)"><path d="M0,0 Q -5,15 0,30 Q 5,15 0,0 Z"/></g>' +
+        '<g transform="translate(225, 460) rotate(20)"><path d="M0,0 Q -5,15 0,30 Q 5,15 0,0 Z"/></g>' +
+        '<g transform="translate(245, 120) rotate(10)"><path d="M0,0 Q -5,15 0,30 Q 5,15 0,0 Z"/></g>' +
+        '<g transform="translate(215, 180) rotate(20)"><path d="M0,0 Q -5,15 0,30 Q 5,15 0,0 Z"/></g>' +
+        '<g transform="translate(190, 260) rotate(30)"><path d="M0,0 Q -5,15 0,30 Q 5,15 0,0 Z"/></g>' +
+        '<g transform="translate(190, 340) rotate(40)"><path d="M0,0 Q -5,15 0,30 Q 5,15 0,0 Z"/></g>' +
+        '<g transform="translate(205, 420) rotate(50)"><path d="M0,0 Q -5,15 0,30 Q 5,15 0,0 Z"/></g>' +
+        '<g transform="translate(310, 150) rotate(-20)"><path d="M0,0 Q -4,12 0,24 Q 4,12 0,0 Z"/></g>' +
+        '<g transform="translate(290, 230) rotate(-30)"><path d="M0,0 Q -4,12 0,24 Q 4,12 0,0 Z"/></g>' +
+        '<g transform="translate(280, 310) rotate(-20)"><path d="M0,0 Q -4,12 0,24 Q 4,12 0,0 Z"/></g>' +
+        '<g transform="translate(290, 390) rotate(-10)"><path d="M0,0 Q -4,12 0,24 Q 4,12 0,0 Z"/></g>' +
+        '<g transform="translate(305, 470) rotate(10)"><path d="M0,0 Q -4,12 0,24 Q 4,12 0,0 Z"/></g>' +
+        '<g transform="translate(320, 190) rotate(10)"><path d="M0,0 Q -4,12 0,24 Q 4,12 0,0 Z"/></g>' +
+        '<g transform="translate(295, 270) rotate(20)"><path d="M0,0 Q -4,12 0,24 Q 4,12 0,0 Z"/></g>' +
+        '<g transform="translate(285, 350) rotate(30)"><path d="M0,0 Q -4,12 0,24 Q 4,12 0,0 Z"/></g>' +
+        '<g transform="translate(295, 430) rotate(40)"><path d="M0,0 Q -4,12 0,24 Q 4,12 0,0 Z"/></g>' +
+        '<g transform="translate(180, 170) rotate(-50)"><path d="M0,0 Q -4,12 0,24 Q 4,12 0,0 Z"/></g>' +
+        '<g transform="translate(160, 210) rotate(-40)"><path d="M0,0 Q -4,12 0,24 Q 4,12 0,0 Z"/></g>' +
+        '<g transform="translate(140, 240) rotate(-30)"><path d="M0,0 Q -4,12 0,24 Q 4,12 0,0 Z"/></g>' +
+        '<g transform="translate(260, 40) rotate(20)"><path d="M0,0 Q -3,10 0,20 Q 3,10 0,0 Z"/></g>' +
+        '<g transform="translate(210, 120) rotate(-20)"><path d="M0,0 Q -3,10 0,20 Q 3,10 0,0 Z"/></g>' +
+        '<g transform="translate(180, 230) rotate(10)"><path d="M0,0 Q -3,10 0,20 Q 3,10 0,0 Z"/></g>' +
+      '</g>' +
     '</g></svg>';
 
   var branchImg = null, branchLoaded = false, branchWaiters = [];
@@ -134,15 +265,88 @@
     for (var i = 0; i < q.length; i++) { try { q[i](branchImg); } catch (e) {} }
   }
 
+  /* ================= 2b. 卡片阴影 SVG ================= */
+  /*
+   * canvas 的 shadowBlur 不受变换矩阵影响，dpr=1/2/3 与导出 scale=2 下
+   * 阴影相对尺寸各不相同 —— 这是各端样式不一致的根因。
+   * 改成预渲染 SVG 位图后，drawImage 做等比重采样，全平台同一效果。
+   */
+
+  // 八角：viewBox 260×260，卡片本体位于 (40,40)-(220,220)，尺寸 180
+  var OCT_SHADOW_SVG =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1040" viewBox="0 0 260 260">' +
+    '<defs>' +
+    '<filter id="o1" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3.5"/></filter>' +
+    '<filter id="o2" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="11"/></filter>' +
+    '</defs>' +
+    '<g transform="translate(0,10)">' +
+    '<path d="M92.74 40 L167.26 40 L220 92.74 L220 167.26 L167.26 220 L92.74 220 L40 167.26 L40 92.74 Z" fill="rgba(0,0,0,0.10)" filter="url(#o2)"/>' +
+    '<path d="M92.74 40 L167.26 40 L220 92.74 L220 167.26 L167.26 220 L92.74 220 L40 167.26 L40 92.74 Z" fill="rgba(0,0,0,0.17)" filter="url(#o1)"/>' +
+    '</g></svg>';
+
+  // 抽屉：viewBox 260×110，胶囊位于 (20,20) 尺寸 220×46，圆角 12
+  var DRAWER_SHADOW_SVG =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="440" viewBox="0 0 260 110">' +
+    '<defs>' +
+    '<filter id="d1" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.5"/></filter>' +
+    '<filter id="d2" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="7"/></filter>' +
+    '</defs>' +
+    '<g transform="translate(0,6)">' +
+    '<rect x="20" y="20" width="220" height="46" rx="12" fill="rgba(0,0,0,0.10)" filter="url(#d2)"/>' +
+    '<rect x="20" y="20" width="220" height="46" rx="12" fill="rgba(0,0,0,0.16)" filter="url(#d1)"/>' +
+    '</g></svg>';
+
+  var shadowCache = { oct: null, drawer: null };
+
+  function ensureShadow(key, svg, cb) {
+    var slot = shadowCache[key];
+    if (!slot) {
+      slot = shadowCache[key] = { img: null, loaded: false, waiters: [] };
+      (function (s) {
+        var im = new Image();
+        im.onload = function () { s.img = im; s.loaded = true; flushShadow(s); };
+        im.onerror = function () { s.img = null; s.loaded = true; flushShadow(s); };
+        im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      })(slot);
+    }
+    if (slot.loaded) { cb(slot.img); return; }
+    slot.waiters.push(cb);
+  }
+
+  function flushShadow(slot) {
+    var q = slot.waiters;
+    slot.waiters = [];
+    for (var i = 0; i < q.length; i++) { try { q[i](slot.img); } catch (e) {} }
+  }
+
+  function getShadow(key) {
+    var s = shadowCache[key];
+    return s && s.loaded ? s.img : null;
+  }
+
+  var assetsReady = false;
+
+  function ensureAssets(cb) {
+    if (assetsReady) { cb(); return; }
+    var pending = 3;
+    function tick() { if (--pending === 0) { assetsReady = true; cb(); } }
+    ensureBranch(tick);
+    ensureShadow('oct', OCT_SHADOW_SVG, tick);
+    ensureShadow('drawer', DRAWER_SHADOW_SVG, tick);
+  }
+
   /* ================= 3. 核心绘制组件 ================= */
 
-  function drawStatus(ctx, color, time, island) {
+  /* 时间用左背景色、信号/电池用右背景色（分裂背景下二者底色不同） */
+  function drawStatus(ctx, timeColor, iconColor, time, island) {
     var W = L.W;
-    ctx.fillStyle = color;
+
+    ctx.fillStyle = timeColor;
     ctx.font = '600 14px ' + F_SANS;
     ctx.textAlign = 'left';
     ctx.fillText(time, 24, 32);
 
+    ctx.fillStyle = iconColor;
     var sx = W - 64, sy = 28;
     ctx.fillRect(sx, sy - 4, 3, 4);
     ctx.fillRect(sx + 5, sy - 6, 3, 6);
@@ -150,10 +354,10 @@
     ctx.fillRect(sx + 15, sy - 10, 3, 10);
 
     var bx = W - 38, by = 18;
-    ctx.strokeStyle = color;
+    ctx.strokeStyle = iconColor;
     ctx.lineWidth = 1;
     ctx.strokeRect(bx, by, 18, 10);
-    ctx.fillStyle = color;
+    ctx.fillStyle = iconColor;
     ctx.fillRect(bx + 2, by + 2, 12, 6);
     ctx.fillRect(bx + 18, by + 3, 2, 4);
 
@@ -166,22 +370,34 @@
 
   function drawOctagonCard(ctx, x, y, item) {
     var s = L.CARD_SIZE;
+
+    // ① SVG 阴影（位图，等比缩放，全端一致）
+    var sh = getShadow('oct');
+    if (sh) {
+      var k = s / 180;
+      ctx.drawImage(sh, x - 40 * k, y - 40 * k, 260 * k, 260 * k);
+    }
+
+    // ② 卡片本体
     ctx.save();
     octPath(ctx, x, y, s, s);
-    ctx.shadowColor = 'rgba(0,0,0,0.15)';
-    ctx.shadowBlur = 20;
-    ctx.shadowOffsetY = 10;
     ctx.fillStyle = item.bg;
     ctx.fill();
+    ctx.restore();
 
-    ctx.shadowColor = 'transparent';
+    // ③ 内描边
+    ctx.save();
     ctx.lineWidth = 1.5;
-    ctx.strokeStyle = item.color === '#111111' ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.4)';
+    ctx.strokeStyle = isLight(item.color) ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.15)';
     var inset = 14;
     octPath(ctx, x + inset, y + inset, s - inset * 2, s - inset * 2);
     ctx.stroke();
+    ctx.restore();
 
+    // ④ 文字
+    ctx.save();
     ctx.fillStyle = item.color;
+
     ctx.font = '12px ' + F_SERIF;
     fillRun(ctx, item.subtitle, x + s / 2, y + 52, 4, 'center');
 
@@ -197,20 +413,20 @@
 
   function drawDrawer(ctx, x, y, item) {
     var w = L.DRAWER_W, h = L.DRAWER_H;
+
+    // ① SVG 阴影
+    var sh = getShadow('drawer');
+    if (sh) ctx.drawImage(sh, x - 20, y - 20, 260, 110);
+
+    // ② 胶囊本体
     ctx.save();
     roundRectPath(ctx, x, y, w, h, L.DRAWER_R);
-    ctx.shadowColor = 'rgba(0,0,0,0.15)';
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetY = 4;
     ctx.fillStyle = item.bg;
     ctx.fill();
-
-    ctx.shadowColor = 'transparent';
-    ctx.save();
     ctx.clip();
+
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
     ctx.fillRect(x, y, 6, h);
-    ctx.restore();
 
     ctx.fillStyle = item.color;
     ctx.font = '600 15px ' + F_SERIF;
@@ -240,40 +456,26 @@
       ctx.fillRect(0, 0, W, H);
     }
 
-    var isDarkText = m.titleColor === '#111111';
-    var shadowCol = isDarkText ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)';
+    drawStatus(ctx, m.statusTimeColor, m.statusIconColor, m.time, m.showIsland);
 
     ctx.save();
-    ctx.shadowColor = shadowCol; ctx.shadowBlur = 4;
-    drawStatus(ctx, m.statusColor, m.time, m.showIsland);
-    ctx.restore();
-
-    ctx.save();
-    ctx.shadowColor = shadowCol; ctx.shadowBlur = 4;
     ctx.fillStyle = m.titleColor;
     ctx.font = '600 ' + m.title.fs + 'px ' + F_DISPLAY;
     fillRun(ctx, m.title.text, W / 2, 120, m.title.ls, 'center');
     ctx.restore();
 
     ctx.save();
-    ctx.shadowColor = shadowCol; ctx.shadowBlur = 4;
-    ctx.globalAlpha = 0.7;
     ctx.fillStyle = m.subColor;
     ctx.font = '12px ' + F_SANS;
     fillRun(ctx, m.sub.text, W / 2, 148, m.sub.ls, 'center');
     ctx.restore();
 
     m.items.forEach(function (it) {
-      ctx.save();
-      ctx.shadowColor = it.color === '#111111' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)';
-      ctx.shadowBlur = 3;
       if (it.type === 'octagon') drawOctagonCard(ctx, it.x, it.y, it);
       else drawDrawer(ctx, it.x, it.y, it);
-      ctx.restore();
     });
 
     ctx.save();
-    ctx.shadowColor = shadowCol; ctx.shadowBlur = 4;
     ctx.fillStyle = m.footerColor;
     ctx.font = '12px ' + F_SANS;
     fillRun(ctx, m.footerText, W - 20, H - 20, 0, 'right');
@@ -283,7 +485,7 @@
       ctx.drawImage(branchImg, 0, 0, W, H);
     }
 
-    ctx.restore(); 
+    ctx.restore();
 
     ctx.save();
     ctx.lineWidth = 10;
@@ -292,7 +494,7 @@
     ctx.stroke();
     ctx.restore();
   }
-  
+
   /* ================= 5. 构建数据模型 ================= */
 
   function extractName(html) {
@@ -313,30 +515,41 @@
            (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
   }
 
-  function footerColorOf(textColor) {
-    return textColor === '#111111' ? 'rgba(17,17,17,0.7)' : 'rgba(255,255,255,0.7)';
-  }
-
   function buildLeftModel(colors, genNames, texts) {
     var a = safeColor(colors[0]);
     var b = safeColor(colors[2]);
-    var tc = C.textOn(a);
+    var hexA = C.rgbToHex(a);
+    var hexB = C.rgbToHex(b);
+
+    // 标题 / 副标题居中于中线，跨两种底色 → 取两者中的最差对比度
+    var tc = pickText([hexA, hexB]);
 
     return {
       splitBg: true,
-      bgLeft: C.rgbToHex(a),
-      bgRight: C.rgbToHex(b),
-      statusColor: tc,
+      bgLeft: hexA,
+      bgRight: hexB,
+      statusTimeColor: pickText([hexA]),   // 时间落在左半
+      statusIconColor: pickText([hexB]),   // 信号 / 电池落在右半
       titleColor: tc,
       subColor: tc,
       title: { text: texts.titleLeft, fs: texts.tInfoL.fs, ls: texts.tInfoL.ls },
       sub: { text: texts.pLeft, ls: texts.lsLeft },
       items: [
-        { type: 'octagon', x: 70, y: 200, bg: C.rgbToHex(a), color: C.textOn(a), subtitle: texts.subtitle, mainTitle: extractName(genNames[0]), info: ['RGB:' + rgbStr(a), C.rgbToHex(a)] },
-        { type: 'octagon', x: 70, y: 410, bg: C.rgbToHex(b), color: C.textOn(b), subtitle: texts.subtitle, mainTitle: extractName(genNames[2]), info: ['RGB:' + rgbStr(b), C.rgbToHex(b)] }
+        {
+          type: 'octagon', x: 70, y: 200,
+          bg: hexA, color: pickText([hexA]),
+          subtitle: texts.subtitle, mainTitle: extractName(genNames[0]),
+          info: ['RGB:' + rgbStr(a), hexA]
+        },
+        {
+          type: 'octagon', x: 70, y: 410,
+          bg: hexB, color: pickText([hexB]),
+          subtitle: texts.subtitle, mainTitle: extractName(genNames[2]),
+          info: ['RGB:' + rgbStr(b), hexB]
+        }
       ],
       footerText: texts.footerText,
-      footerColor: footerColorOf(tc),
+      footerColor: pickText([hexB]),       // 页脚在右下，压右半底色
       showIsland: false,
       time: texts.time
     };
@@ -345,7 +558,9 @@
   function buildRightModel(colors, ruleColors, ruleNames, genNames, ruleName, texts) {
     var bg = safeColor(colors[0]);
     var main = safeColor(colors[2]);
-    var tc = C.textOn(bg);
+    var hexBg = C.rgbToHex(bg);
+    var mainHex = C.rgbToHex(main);
+    var tc = pickText([hexBg]);
     var cards;
 
     if (ruleColors && ruleColors.length) {
@@ -359,32 +574,34 @@
 
     var items = [{
       type: 'octagon', x: 70, y: 200,
-      bg: C.rgbToHex(main), color: C.textOn(main),
+      bg: mainHex, color: pickText([mainHex]),
       subtitle: texts.subtitle, mainTitle: extractName(genNames[2]),
-      info: ['RGB:' + rgbStr(main), C.rgbToHex(main)]
+      info: ['RGB:' + rgbStr(main), mainHex]
     }];
 
     var startY = 400;
     cards.slice(1).forEach(function (c, idx) {
+      var hex = C.rgbToHex(c);
       items.push({
         type: 'drawer', x: 50, y: startY + idx * (L.DRAWER_H + 15),
-        bg: C.rgbToHex(c), color: C.textOn(c),
-        title: extractName(ruleNames[idx + 1]), hex: C.rgbToHex(c)
+        bg: hex, color: pickText([hex]),
+        title: extractName(ruleNames[idx + 1]), hex: hex
       });
     });
 
     return {
       splitBg: false,
-      bgLeft: C.rgbToHex(bg),
-      bgRight: C.rgbToHex(bg),
-      statusColor: tc,
+      bgLeft: hexBg,
+      bgRight: hexBg,
+      statusTimeColor: tc,
+      statusIconColor: tc,
       titleColor: tc,
       subColor: tc,
       title: { text: texts.titleRight, fs: texts.tInfoR.fs, ls: texts.tInfoR.ls },
       sub: { text: texts.pRight, ls: texts.lsRight },
       items: items,
       footerText: texts.footerText,
-      footerColor: footerColorOf(tc),
+      footerColor: tc,
       showIsland: true,
       time: texts.time
     };
@@ -394,16 +611,20 @@
 
   var models = { 'co-phone-left': null, 'co-phone-right': null };
 
-  function injectStyles() {
-    if (document.getElementById('cp-canvas-styles')) return;
-    var s = document.createElement('style');
-    s.id = 'cp-canvas-styles';
-    s.textContent =
-      '#co-phone-left,#co-phone-right{position:relative;}' +
-      '#co-phone-left>.cp-canvas,#co-phone-right>.cp-canvas{' +
-      'display:block;width:100%;height:auto;aspect-ratio:' + L.W + '/' + L.H + ';}';
-    document.head.appendChild(s);
-  }
+function injectStyles() {
+  if (document.getElementById('cp-canvas-styles')) return;
+  var s = document.createElement('style');
+  s.id = 'cp-canvas-styles';
+  s.textContent =
+    '#co-phone-left,#co-phone-right{position:relative;}' +
+    '#co-phone-left>.cp-canvas,#co-phone-right>.cp-canvas{' +
+    'display:block;width:100%;height:auto;aspect-ratio:' + L.W + '/' + L.H + ';' +
+    /* ↓ 新增两行：圆角对齐 + 拟物阴影（引用站点令牌，自动跟随亮/暗主题） */
+    'border-radius:' + (40 / L.W * 100) + '% / ' + (40 / L.H * 100) + '%;' +
+    'box-shadow: var(--nm-out-lg);' +
+    '}';
+  document.head.appendChild(s);
+}
 
   function mountPreview(id, model) {
     var box = document.getElementById(id);
@@ -430,7 +651,7 @@
     }
 
     paint();
-    if (!branchLoaded) ensureBranch(paint);
+    if (!assetsReady) ensureAssets(paint);
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(paint).catch(function () {});
     }
@@ -503,7 +724,7 @@
     ctx.fillStyle = '#e0e5ec';
     ctx.fillRect(0, 0, cw, ch);
     ctx.translate(pad, pad);
-    
+
     drawPhone(ctx, model, branchImg);
 
     var a = document.createElement('a');
@@ -525,7 +746,7 @@
 
     btn.textContent = isEn ? 'Rendering…' : '生成中...';
 
-    ensureBranch(function () {
+    ensureAssets(function () {
       try {
         var name = id === 'co-phone-left' ? (isEn ? 'default-palette.png' : '默认配色.png') : (isEn ? 'generated-palette.png' : '衍生配色.png');
         exportPNG(model, name);

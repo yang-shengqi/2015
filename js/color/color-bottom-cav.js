@@ -18,13 +18,12 @@
       el.removeAttribute('id');
     });
 
-    // 核心修复 1：剥离所有 data-tip，换成 data-global-tip，彻底干掉原生的 CSS 气泡
     clone.querySelectorAll('[data-tip]').forEach(function (el) {
       var tip = el.getAttribute('data-tip');
       if (tip) el.setAttribute('data-global-tip', tip);
       el.removeAttribute('data-tip');
     });
-    // 同时干掉原本可能用于触发伪元素的类名
+    
     clone.querySelectorAll('.co-tip').forEach(function (el) {
       el.classList.remove('co-tip');
     });
@@ -39,31 +38,8 @@
       if (el.name) el.name = el.name + '_sticky';
     });
 
-    // 核心修复 2：把取色面板（HSL/LCH）从克隆体中直接抽离
-    var cpPanels = [];
-    clone.querySelectorAll('.co-cp-panel').forEach(function (p) {
-      p.style.position = 'fixed';
-      p.style.zIndex = '99999';
-      if (p.querySelector('.cp-eyedropper')) p.classList.add('co-hsl-panel');
-      else p.classList.add('co-lch-panel');
-      
-      cpPanels.push(p);
-      p.remove(); // 从克隆体中删掉
-    });
-
-    /* ---------- 2. 注入悬浮容器 ---------- */
-    var wrap = document.createElement('div');
-    wrap.className = 'co-sticky-bar';
-    wrap.setAttribute('role', 'region');
-    wrap.appendChild(clone);
-    document.body.appendChild(wrap);
-
-    // 面板挂载到 body
-    cpPanels.forEach(function(p) {
-      document.body.appendChild(p);
-    });
-
-    /* ---------- 3. 按 DOM 顺序一一配对 ---------- */
+    /* ---------- 2. 核心修复：先建立映射，再把面板拔离 ---------- */
+    // 必须在 p.remove() 之前跑完配对，这样面板里的 range 才能被登记进 origOf
     var pairs = [];
     (function build(a, b) {
       pairs.push([a, b]);
@@ -75,17 +51,41 @@
     var origOf = new Map();
     pairs.forEach(function (p) { origOf.set(p[1], p[0]); });
 
-    /* ---------- 4. 全局 Tooltip (直接从原元素取数据) ---------- */
+    // 将取色面板从克隆体中抽离
+    var cpPanels = [];
+    clone.querySelectorAll('.co-cp-panel').forEach(function (p) {
+      p.style.position = 'fixed';
+      p.style.zIndex = '99999';
+      if (p.querySelector('.cp-eyedropper')) p.classList.add('co-hsl-panel');
+      else p.classList.add('co-lch-panel');
+      
+      cpPanels.push(p);
+      p.remove(); 
+    });
+
+    /* ---------- 3. 注入悬浮容器 ---------- */
+    var wrap = document.createElement('div');
+    wrap.className = 'co-sticky-bar';
+    wrap.setAttribute('role', 'region');
+    wrap.appendChild(clone);
+    document.body.appendChild(wrap);
+
+    // 面板挂载到 body
+    cpPanels.forEach(function(p) {
+      document.body.appendChild(p);
+    });
+
+    /* ---------- 4. 全局 Tooltip ---------- */
     var globalTip = document.createElement('div');
     globalTip.style.cssText = `
-      position: fixed; z-index: 2147483647; /* 绝对最高层级 */
+      position: fixed; z-index: 2147483647;
       background: var(--nm-bg, #e0e5ec); color: var(--nm-text-2, #666);
       font-size: 11px; font-family: var(--nm-font, sans-serif);
       padding: 6px 10px; border-radius: var(--nm-r-sm, 6px);
       box-shadow: var(--nm-out-sm, 0 2px 8px rgba(0,0,0,.1));
       white-space: nowrap; pointer-events: none;
       opacity: 0; visibility: hidden;
-      transform: translate(-50%, -100%) translateY(2px); /* 居中对齐并稍微下移 */
+      transform: translate(-50%, -100%) translateY(2px);
       transition: opacity .2s ease, transform .2s ease, visibility .2s;
     `;
     document.body.appendChild(globalTip);
@@ -97,10 +97,8 @@
     }
 
     wrap.addEventListener('mouseover', function (e) {
-      // 向上寻找被悬停的 label 或带有提示的元素
       var target = e.target.closest('label, [data-global-tip]');
       if (target) {
-        // 核心：优先从克隆体获取，如果没有，去原节点实时抓取！
         var tipText = target.getAttribute('data-global-tip');
         if (!tipText) {
           var orig = origOf.get(target);
@@ -110,8 +108,6 @@
         if (tipText) {
           globalTip.textContent = tipText;
           var rect = target.getBoundingClientRect();
-          
-          // 悬浮在正上方 8px
           globalTip.style.left = (rect.left + rect.width / 2) + 'px';
           globalTip.style.top = (rect.top - 8) + 'px';
           globalTip.style.opacity = '1';
@@ -126,7 +122,7 @@
     wrap.addEventListener('mouseleave', hideTip);
     window.addEventListener('scroll', hideTip, { passive: true });
 
-    /* ---------- 5. HSL / LCH 面板交互 (已提权到 body) ---------- */
+    /* ---------- 5. HSL / LCH 面板按钮交互 ---------- */
     clone.querySelectorAll('.cp-wrapper').forEach(function (cw) {
       var btns = cw.querySelectorAll('.cp-btn');
       
@@ -144,15 +140,28 @@
               var willShow = !p.classList.contains('show');
               
               if (willShow) {
-                // 计算按钮的屏幕坐标，让面板在按钮正上方悬浮
                 var rect = btn.getBoundingClientRect();
                 p.style.left = (rect.left + rect.width / 2) + 'px';
                 p.style.top = (rect.top - 10) + 'px';
-                // 借助 transform 完美定位在按钮上方并居中
                 p.style.transform = 'translate(-50%, -100%)'; 
                 
                 p.classList.add('show');
                 btn.classList.add('active');
+                
+                // 核心：打开悬浮面板时，强制从原生面板同步一次数值显示
+                var origPanel = origOf.get(p);
+                if (origPanel) {
+                   var origInputs = origPanel.querySelectorAll('input[type="range"]');
+                   var cloneInputs = p.querySelectorAll('input[type="range"]');
+                   for (var i = 0; i < origInputs.length; i++) {
+                     if (cloneInputs[i]) {
+                       cloneInputs[i].value = origInputs[i].value;
+                       var origOut = origInputs[i].nextElementSibling;
+                       var cloneOut = cloneInputs[i].nextElementSibling;
+                       if (cloneOut && origOut) cloneOut.textContent = origOut.textContent;
+                     }
+                   }
+                }
               } else {
                 p.classList.remove('show');
                 btn.classList.remove('active');
@@ -166,13 +175,14 @@
     });
 
     document.addEventListener('click', function (e) {
-      if (!wrap.contains(e.target)) {
+      // 核心修复：如果点击的是面板内部，不要隐藏面板（原版会误触隐藏）
+      if (!wrap.contains(e.target) && !(e.target.closest && e.target.closest('.co-cp-panel'))) {
         cpPanels.forEach(function (p) { p.classList.remove('show'); });
         clone.querySelectorAll('.cp-btn').forEach(function (b) { b.classList.remove('active'); });
       }
     });
 
-    /* ---------- 6. 事件转发 ---------- */
+    /* ---------- 6. 事件转发（针对悬浮栏内的按钮、滑块等） ---------- */
     wrap.addEventListener('click', function (e) {
       var btn = e.target.closest && e.target.closest('button');
       if (!btn || !wrap.contains(btn) || btn.classList.contains('cp-btn')) return;
@@ -193,18 +203,6 @@
         }
       }
     });
-    
-    cpPanels.forEach(function(panel) {
-      panel.addEventListener('input', function(e) {
-        if (e.target.type === 'range') {
-          var orig = origOf.get(e.target);
-          if (orig) {
-            orig.value = e.target.value;
-            orig.dispatchEvent(new Event('input', { bubbles: true }));
-          }
-        }
-      });
-    });
 
     wrap.addEventListener('change', function (e) {
       var t = e.target;
@@ -217,12 +215,88 @@
       }
     });
 
-    /* ---------- 7. 双向同步 ---------- */
+    /* ---------- 7. 悬浮面板内部交互逻辑修复 ---------- */
+    var ci = document.getElementById('ci');
+
+    cpPanels.forEach(function(panel) {
+      // 1. 滑块输入事件
+      panel.addEventListener('input', function(e) {
+        if (e.target.type === 'range') {
+          var orig = origOf.get(e.target);
+          if (orig) {
+            orig.value = e.target.value;
+            // 触发原生面板的 input 事件（这会触发颜色的重新计算）
+            orig.dispatchEvent(new Event('input', { bubbles: true }));
+            
+            // 核心：从原面板拉取已经格式化好的带单位文本，赋给悬浮面板
+            var cloneOut = e.target.nextElementSibling;
+            var origOut = orig.nextElementSibling;
+            if (cloneOut && origOut) {
+              cloneOut.textContent = origOut.textContent;
+            }
+          }
+        }
+      });
+
+      // 2. 吸管按钮转发
+      var cloneEyedropper = panel.querySelector('.cp-eyedropper');
+      if (cloneEyedropper) {
+        if (!global.EyeDropper) {
+          cloneEyedropper.style.display = 'none';
+        } else {
+          cloneEyedropper.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            new global.EyeDropper().open().then(res => {
+              ci.value = res.sRGBHex.toLowerCase();
+              ci.dispatchEvent(new Event('input', { bubbles: true }));
+              
+              // 取色后自动关闭悬浮面板
+              panel.classList.remove('show');
+              var btns = wrap.querySelectorAll('.cp-btn');
+              btns.forEach(function(b) {
+                if (!b.classList.contains('cp-lch-btn')) b.classList.remove('active');
+              });
+            }).catch(() => {});
+          });
+        }
+      }
+    });
+
+    // 3. 全局颜色变化监听（比如主面板选色、吸管取色时，悬浮面板也要动）
+    if (ci) {
+      var lastCiVal = ci.value;
+      setInterval(function() {
+        if (ci.value !== lastCiVal) {
+          lastCiVal = ci.value;
+          cpPanels.forEach(function(panel) {
+            if (!panel.classList.contains('show')) return;
+            
+            var origPanel = origOf.get(panel);
+            if (origPanel) {
+              var origInputs = origPanel.querySelectorAll('input[type="range"]');
+              var cloneInputs = panel.querySelectorAll('input[type="range"]');
+              for (var i = 0; i < origInputs.length; i++) {
+                if (cloneInputs[i]) {
+                  cloneInputs[i].value = origInputs[i].value;
+                  var origOut = origInputs[i].nextElementSibling;
+                  var cloneOut = cloneInputs[i].nextElementSibling;
+                  if (cloneOut && origOut) {
+                    cloneOut.textContent = origOut.textContent;
+                  }
+                }
+              }
+            }
+          });
+        }
+      }, 100);
+    }
+
+    /* ---------- 8. 双向同步 ---------- */
     function syncState() {
       pairs.forEach(function (p) {
         var o = p[0], c = p[1];
         
-        // 同步动态更新的提示词
         if (o.hasAttribute('data-tip') && c.getAttribute('data-global-tip') !== o.getAttribute('data-tip')) {
           c.setAttribute('data-global-tip', o.getAttribute('data-tip'));
         }
@@ -241,7 +315,7 @@
       });
     }
 
-    /* ---------- 8. 滚动显隐 ---------- */
+    /* ---------- 9. 滚动显隐 ---------- */
     var visible = false;
     var syncTimer = 0;
     var rafId = 0;
@@ -262,7 +336,6 @@
         clearInterval(syncTimer);
         syncTimer = 0;
       }
-      // 隐藏悬浮条时，强制关闭面板
       cpPanels.forEach(function (p) { p.classList.remove('show'); });
       clone.querySelectorAll('.cp-btn').forEach(function (b) { b.classList.remove('active'); });
     }
